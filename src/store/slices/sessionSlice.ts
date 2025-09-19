@@ -24,7 +24,7 @@ const initialState: SessionState = {
   currentQuestion: '',
   isListening: false,
   isSpeaking: false,
-  feedback: null,
+  feedback: null
 };
 
 const sessionSlice = createSlice({

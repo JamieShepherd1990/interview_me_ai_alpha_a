@@ -1,10 +1,13 @@
 export type RootStackParamList = {
+  Onboarding: undefined;
   Main: undefined;
   InterviewFlow: {
     screen: 'RoleSelection';
-    params?: { interviewType?: string };
+    params?: { 
+      interviewType?: string;
+      selectedRole?: string;
+    };
   };
-};
 
 export type MainTabParamList = {
   Home: undefined;
@@ -12,9 +15,18 @@ export type MainTabParamList = {
 };
 
 export type InterviewStackParamList = {
-  RoleSelection: { interviewType?: string };
-  Interview: { sessionId?: string };
-  Feedback: { sessionId: string };
+  RoleSelection: {
+    selectedRole?: string;
+    interviewType?: string;
+  };
+  Interview: {
+    interviewType: string;
+    role: string;
+  };
+  Feedback: {
+    sessionId: string;
+    score: number;
+  };
 };
 
 export type RootStackScreenProps<T extends keyof RootStackParamList> = {

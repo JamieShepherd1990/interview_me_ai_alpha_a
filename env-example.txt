@@ -1,0 +1,39 @@
+# InterviewCoach AI Environment Configuration
+# Copy this file to .env and fill in your actual values
+
+# API Base URL (for development, use your local server or ngrok URL)
+EXPO_PUBLIC_API_URL=http://localhost:3000
+
+# OpenAI API Configuration
+OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_MODEL=gpt-4o-mini
+
+# ElevenLabs API Configuration
+ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
+ELEVENLABS_VOICE_ID=pNInz6obpgDQGcFmaJgB
+
+# Database Configuration
+DATABASE_ENCRYPTION_KEY=your_secure_encryption_key_here
+
+# Development Settings
+NODE_ENV=development
+DEBUG=true
+
+# Performance Settings
+TTS_STREAMING_ENABLED=true
+STT_PARTIAL_RESULTS=true
+TARGET_LATENCY_MS=2000
+
+# Security Settings
+RATE_LIMIT_REQUESTS_PER_MINUTE=60
+MAX_SESSION_DURATION_MINUTES=30
+
+# Feature Flags
+ENABLE_HAPTICS=true
+ENABLE_CONFETTI=true
+ENABLE_PDF_EXPORT=true
+ENABLE_CHARTS=true
+
+# Analytics (Optional)
+ANALYTICS_ENABLED=false
+ANALYTICS_API_KEY=your_analytics_key_here

@@ -1,194 +1,347 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useEffect } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  SafeAreaView,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
 import { RootState } from '../store';
+import { useTheme } from '../theme';
+import Database from '../db/database';
+import { setSessions } from '../store/slices/historySlice';
 
 const interviewTemplates = [
-  { id: '1', title: 'Software Engineer', role: 'Junior Software Engineer', duration: '15 min' },
-  { id: '2', title: 'Data Analyst', role: 'Data Analyst', duration: '15 min' },
-  { id: '3', title: 'Product Manager', role: 'Product Manager', duration: '20 min' },
-  { id: '4', title: 'Marketing Specialist', role: 'Marketing Specialist', duration: '15 min' },
+  {
+    id: '1',
+    title: 'Software Engineer',
+    description: 'Technical and behavioral questions for junior to mid-level positions',
+    icon: 'code-working' as keyof typeof Ionicons.glyphMap,
+    color: '#3b82f6',
+    estimatedTime: '15-20 min',
+  },
+  {
+    id: '2',
+    title: 'Data Analyst',
+    description: 'Analytics, SQL, and problem-solving focused interview',
+    icon: 'analytics' as keyof typeof Ionicons.glyphMap,
+    color: '#10b981',
+    estimatedTime: '12-18 min',
+  },
+  {
+    id: '3',
+    title: 'Product Manager',
+    description: 'Strategy, prioritization, and leadership questions',
+    icon: 'bulb' as keyof typeof Ionicons.glyphMap,
+    color: '#f59e0b',
+    estimatedTime: '20-25 min',
+  },
+  {
+    id: '4',
+    title: 'UX Designer',
+    description: 'Design thinking, user research, and portfolio discussion',
+    icon: 'color-palette' as keyof typeof Ionicons.glyphMap,
+    color: '#8b5cf6',
+    estimatedTime: '15-20 min',
+  },
 ];
 
 export default function HomeScreen() {
   const navigation = useNavigation();
-  const recentSessions = useSelector((state: RootState) => state.history.sessions.slice(0, 3));
+  const dispatch = useDispatch();
+  const { colors, isDark } = useTheme();
+  const recentSessions = useSelector((state: RootState) => 
+    state.history.sessions.slice(0, 3)
+  );
+  const settings = useSelector((state: RootState) => state.settings);
 
-  const handleStartInterview = (type: string) => {
-    // Navigate to interview screen with selected type
-    navigation.navigate('Interview' as never, { interviewType: type } as never);
+  useEffect(() => {
+    loadRecentSessions();
+  }, []);
+
+  const loadRecentSessions = async () => {
+    try {
+      const db = Database.getInstance();
+      await db.initialize();
+      const sessions = await db.getAllSessions();
+      dispatch(setSessions(sessions));
+    } catch (error) {
+      console.error('Error loading recent sessions:', error);
+    }
   };
 
-  return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Welcome to InterviewCoach</Text>
-        <Text style={styles.subtitle}>Practice with AI-powered mock interviews</Text>
-      </View>
+  const handleStartInterview = async (template: typeof interviewTemplates[0]) => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    navigation.navigate('InterviewFlow' as never, {
+      screen: 'RoleSelection',
+      params: { 
+        selectedRole: template.title,
+        interviewType: template.id 
+      }
+    } as never);
+  };
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Start New Interview</Text>
-        <TouchableOpacity 
-          style={styles.primaryButton}
-          onPress={() => navigation.navigate('InterviewFlow' as never, { screen: 'RoleSelection' } as never)}
-        >
-          <Text style={styles.buttonText}>Choose Your Role</Text>
-        </TouchableOpacity>
-      </View>
+  const handleViewHistory = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Tab navigator will handle this
+  };
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Interview Templates</Text>
-        {interviewTemplates.map((template) => (
-          <TouchableOpacity 
-            key={template.id}
-            style={styles.templateCard}
-            onPress={() => handleStartInterview(template.role)}
+  const renderWelcomeSection = () => (
+    <View style={{
+      padding: 20,
+      backgroundColor: colors.primary[50],
+      borderRadius: 16,
+      margin: 16,
+    }}>
+      <Text style={{
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: colors.text.primary,
+        marginBottom: 8,
+      }}>
+        Welcome back! 👋
+      </Text>
+      <Text style={{
+        fontSize: 16,
+        color: colors.text.secondary,
+        lineHeight: 24,
+      }}>
+        Ready to practice your interview skills? Choose a role below to get started with AI-powered mock interviews.
+      </Text>
+    </View>
+  );
+
+  const renderInterviewTemplate = (template: typeof interviewTemplates[0]) => (
+    <TouchableOpacity
+      key={template.id}
+      onPress={() => handleStartInterview(template)}
+      style={{
+        backgroundColor: colors.surface,
+        borderRadius: 12,
+        padding: 16,
+        marginHorizontal: 16,
+        marginBottom: 12,
+        borderLeftWidth: 4,
+        borderLeftColor: template.color,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={{
+          width: 48,
+          height: 48,
+          borderRadius: 24,
+          backgroundColor: `${template.color}15`,
+          justifyContent: 'center',
+          alignItems: 'center',
+          marginRight: 16,
+        }}>
+          <Ionicons
+            name={template.icon}
+            size={24}
+            color={template.color}
+          />
+        </View>
+        
+        <View style={{ flex: 1 }}>
+          <Text style={{
+            fontSize: 18,
+            fontWeight: '600',
+            color: colors.text.primary,
+            marginBottom: 4,
+          }}>
+            {template.title}
+          </Text>
+          <Text style={{
+            fontSize: 14,
+            color: colors.text.secondary,
+            marginBottom: 8,
+            lineHeight: 20,
+          }}>
+            {template.description}
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons
+              name="time-outline"
+              size={14}
+              color={colors.text.secondary}
+              style={{ marginRight: 4 }}
+            />
+            <Text style={{
+              fontSize: 12,
+              color: colors.text.secondary,
+            }}>
+              {template.estimatedTime}
+            </Text>
+          </View>
+        </View>
+        
+        <Ionicons
+          name="chevron-forward"
+          size={20}
+          color={colors.text.secondary}
+        />
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderRecentSessions = () => {
+    if (recentSessions.length === 0) {
+      return (
+        <View style={{
+          backgroundColor: colors.surface,
+          borderRadius: 12,
+          padding: 20,
+          margin: 16,
+          alignItems: 'center',
+        }}>
+          <Ionicons
+            name="document-text-outline"
+            size={48}
+            color={colors.text.secondary}
+            style={{ marginBottom: 12 }}
+          />
+          <Text style={{
+            fontSize: 16,
+            color: colors.text.secondary,
+            textAlign: 'center',
+          }}>
+            No recent interviews yet
+          </Text>
+          <Text style={{
+            fontSize: 14,
+            color: colors.text.secondary,
+            textAlign: 'center',
+            marginTop: 4,
+          }}>
+            Complete your first interview to see your progress here
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={{ marginHorizontal: 16 }}>
+        <View style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 12,
+        }}>
+          <Text style={{
+            fontSize: 18,
+            fontWeight: '600',
+            color: colors.text.primary,
+          }}>
+            Recent Sessions
+          </Text>
+          <TouchableOpacity onPress={handleViewHistory}>
+            <Text style={{
+              fontSize: 14,
+              color: colors.primary[600],
+              fontWeight: '500',
+            }}>
+              View All
+            </Text>
+          </TouchableOpacity>
+        </View>
+        
+        {recentSessions.map((session) => (
+          <TouchableOpacity
+            key={session.id}
+            style={{
+              backgroundColor: colors.surface,
+              borderRadius: 8,
+              padding: 12,
+              marginBottom: 8,
+              flexDirection: 'row',
+              alignItems: 'center',
+            }}
           >
-            <View style={styles.templateContent}>
-              <Text style={styles.templateTitle}>{template.title}</Text>
-              <Text style={styles.templateRole}>{template.role}</Text>
-              <Text style={styles.templateDuration}>{template.duration}</Text>
+            <View style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: colors.primary[100],
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginRight: 12,
+            }}>
+              <Text style={{
+                fontSize: 16,
+                fontWeight: 'bold',
+                color: colors.primary[600],
+              }}>
+                {session.score.toFixed(1)}
+              </Text>
             </View>
+            
+            <View style={{ flex: 1 }}>
+              <Text style={{
+                fontSize: 14,
+                fontWeight: '500',
+                color: colors.text.primary,
+              }}>
+                {session.role}
+              </Text>
+              <Text style={{
+                fontSize: 12,
+                color: colors.text.secondary,
+              }}>
+                {new Date(session.createdAt).toLocaleDateString()}
+              </Text>
+            </View>
+            
+            <Ionicons
+              name="chevron-forward"
+              size={16}
+              color={colors.text.secondary}
+            />
           </TouchableOpacity>
         ))}
       </View>
+    );
+  };
 
-      {recentSessions.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Sessions</Text>
-          {recentSessions.map((session) => (
-            <TouchableOpacity 
-              key={session.id}
-              style={styles.sessionCard}
-              onPress={() => navigation.navigate('Interview' as never, { sessionId: session.id } as never)}
-            >
-              <View style={styles.sessionContent}>
-                <Text style={styles.sessionTitle}>{session.title}</Text>
-                <Text style={styles.sessionScore}>Score: {session.score}/10</Text>
-                <Text style={styles.sessionDate}>
-                  {new Date(session.createdAt).toLocaleDateString()}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ))}
+  return (
+    <SafeAreaView style={{ 
+      flex: 1, 
+      backgroundColor: colors.background 
+    }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {renderWelcomeSection()}
+        
+        <View style={{ marginTop: 8 }}>
+          <Text style={{
+            fontSize: 20,
+            fontWeight: 'bold',
+            color: colors.text.primary,
+            marginHorizontal: 16,
+            marginBottom: 16,
+          }}>
+            Choose Interview Type
+          </Text>
+          {interviewTemplates.map(renderInterviewTemplate)}
         </View>
-      )}
-    </ScrollView>
+        
+        <View style={{ marginTop: 24 }}>
+          {renderRecentSessions()}
+        </View>
+        
+        <View style={{ height: 32 }} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  header: {
-    padding: 20,
-    backgroundColor: '#007AFF',
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
-  },
-  section: {
-    padding: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#333',
-  },
-  primaryButton: {
-    backgroundColor: '#007AFF',
-    padding: 15,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#007AFF',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  templateCard: {
-    backgroundColor: 'white',
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  templateContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  templateTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  templateRole: {
-    fontSize: 14,
-    color: '#666',
-  },
-  templateDuration: {
-    fontSize: 12,
-    color: '#999',
-  },
-  sessionCard: {
-    backgroundColor: 'white',
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  sessionContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  sessionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  sessionScore: {
-    fontSize: 14,
-    color: '#007AFF',
-    fontWeight: 'bold',
-  },
-  sessionDate: {
-    fontSize: 12,
-    color: '#999',
-  },
-});

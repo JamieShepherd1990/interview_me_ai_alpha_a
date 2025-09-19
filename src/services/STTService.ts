@@ -1,17 +1,41 @@
-import Voice, { SpeechResultsEvent, SpeechErrorEvent } from '@react-native-voice/voice';
+import Voice, { 
+  SpeechResultsEvent, 
+  SpeechErrorEvent, 
+  SpeechStartEvent,
+  SpeechEndEvent 
+} from '@react-native-voice/voice';
+import * as Haptics from 'expo-haptics';
 import { AppDispatch } from '../store';
+import { updateTranscript, appendTranscript, setListening } from '../store/slices/sessionSlice';
+import TTSService from './TTSService';
+
+interface STTConfig {
+  partialResultsEnabled: boolean;
+  streamingInterval: number; // ms
+  silenceTimeout: number; // ms
+  bargeInThreshold: number; // confidence threshold for barge-in
+}
 
 class STTService {
   private static instance: STTService;
   private dispatch: AppDispatch | null = null;
   private isListening = false;
+  private partialTranscript = '';
+  private finalTranscript = '';
+  private streamingTimer: NodeJS.Timeout | null = null;
+  private silenceTimer: NodeJS.Timeout | null = null;
+  private lastPartialResult = '';
+  private bargeInCallback: (() => void) | null = null;
+  
+  private config: STTConfig = {
+    partialResultsEnabled: true,
+    streamingInterval: 300, // Stream every 300ms for low latency
+    silenceTimeout: 2000, // 2 seconds of silence before stopping
+    bargeInThreshold: 0.7, // Confidence threshold for interruption
+  };
 
   private constructor() {
-    Voice.onSpeechStart = this.onSpeechStart.bind(this);
-    Voice.onSpeechEnd = this.onSpeechEnd.bind(this);
-    Voice.onSpeechResults = this.onSpeechResults.bind(this);
-    Voice.onSpeechPartialResults = this.onSpeechPartialResults.bind(this);
-    Voice.onSpeechError = this.onSpeechError.bind(this);
+    this.initializeVoice();
   }
 
   public static getInstance(): STTService {
@@ -21,93 +45,245 @@ class STTService {
     return STTService.instance;
   }
 
+  private initializeVoice() {
+    Voice.onSpeechStart = this.onSpeechStart.bind(this);
+    Voice.onSpeechEnd = this.onSpeechEnd.bind(this);
+    Voice.onSpeechResults = this.onSpeechResults.bind(this);
+    Voice.onSpeechPartialResults = this.onSpeechPartialResults.bind(this);
+    Voice.onSpeechError = this.onSpeechError.bind(this);
+    Voice.onSpeechVolumeChanged = this.onSpeechVolumeChanged.bind(this);
+  }
+
   public setDispatch(dispatch: AppDispatch) {
     this.dispatch = dispatch;
   }
 
-  private onSpeechStart() {
-    console.log('Speech recognition started');
-    this.isListening = true;
-  }
-
-  private onSpeechEnd() {
-    console.log('Speech recognition ended');
-    this.isListening = false;
-  }
-
-  private onSpeechResults(event: SpeechResultsEvent) {
-    console.log('Speech results:', event.value);
-    if (this.dispatch && event.value && event.value.length > 0) {
-      // Update transcript with final results
-      this.dispatch({
-        type: 'session/updateTranscript',
-        payload: event.value[0],
-      });
-    }
-  }
-
-  private onSpeechPartialResults(event: SpeechResultsEvent) {
-    console.log('Partial speech results:', event.value);
-    if (this.dispatch && event.value && event.value.length > 0) {
-      // Update transcript with partial results for real-time feedback
-      this.dispatch({
-        type: 'session/updateTranscript',
-        payload: event.value[0],
-      });
-    }
-  }
-
-  private onSpeechError(event: SpeechErrorEvent) {
-    console.error('Speech recognition error:', event.error);
-    this.isListening = false;
+  public setBargeInCallback(callback: () => void) {
+    this.bargeInCallback = callback;
   }
 
   public async startListening(): Promise<boolean> {
     try {
       if (this.isListening) {
-        return true;
+        await this.stopListening();
       }
 
-      const available = await Voice.isAvailable();
-      if (!available) {
-        console.error('Speech recognition not available');
-        return false;
-      }
+      // Clear previous state
+      this.partialTranscript = '';
+      this.finalTranscript = '';
+      this.lastPartialResult = '';
 
-      await Voice.start('en-US');
+      // Start voice recognition with optimized settings
+      await Voice.start('en-US', {
+        EXTRA_PARTIAL_RESULTS: true,
+        EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS: 1000,
+        EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS: 1000,
+        EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS: 1000,
+      });
+
+      this.isListening = true;
+      this.dispatch?.(setListening(true));
+
+      // Start streaming timer for real-time updates
+      this.startStreamingTimer();
+
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       return true;
+
     } catch (error) {
-      console.error('Error starting speech recognition:', error);
+      console.error('Error starting voice recognition:', error);
+      this.isListening = false;
+      this.dispatch?.(setListening(false));
       return false;
     }
   }
 
   public async stopListening(): Promise<boolean> {
     try {
-      if (!this.isListening) {
-        return true;
-      }
-
       await Voice.stop();
       this.isListening = false;
+      this.dispatch?.(setListening(false));
+      
+      this.clearTimers();
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      
       return true;
     } catch (error) {
-      console.error('Error stopping speech recognition:', error);
+      console.error('Error stopping voice recognition:', error);
       return false;
     }
   }
 
-  public async destroy(): Promise<void> {
+  private startStreamingTimer() {
+    this.streamingTimer = setInterval(() => {
+      if (this.partialTranscript && this.partialTranscript !== this.lastPartialResult) {
+        this.streamPartialResult(this.partialTranscript);
+        this.lastPartialResult = this.partialTranscript;
+      }
+    }, this.config.streamingInterval);
+  }
+
+  private async streamPartialResult(text: string) {
     try {
-      await Voice.destroy();
-      this.isListening = false;
+      // Stream partial results to backend for real-time processing
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000'}/api/chat/stream`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          partialTranscript: text,
+          isPartial: true,
+        }),
+      });
+
+      if (response.ok) {
+        // Backend can start processing while user is still speaking
+        console.log('Streamed partial result:', text);
+      }
     } catch (error) {
-      console.error('Error destroying speech recognition:', error);
+      console.error('Error streaming partial result:', error);
     }
+  }
+
+  private onSpeechStart = (event: SpeechStartEvent) => {
+    console.log('Speech started');
+    
+    // Detect barge-in: user started speaking while AI is talking
+    const ttsService = TTSService.getInstance();
+    if (ttsService.isCurrentlyPlaying() || ttsService.isCurrentlyStreaming()) {
+      console.log('Barge-in detected!');
+      ttsService.bargeIn(); // Immediately stop AI speech
+      this.bargeInCallback?.();
+    }
+
+    this.clearSilenceTimer();
+  };
+
+  private onSpeechEnd = (event: SpeechEndEvent) => {
+    console.log('Speech ended');
+    this.startSilenceTimer();
+  };
+
+  private onSpeechResults = (event: SpeechResultsEvent) => {
+    const results = event.value || [];
+    if (results.length > 0) {
+      this.finalTranscript = results[0];
+      console.log('Final result:', this.finalTranscript);
+      
+      // Update Redux store with final transcript
+      this.dispatch?.(appendTranscript(`\nUser: ${this.finalTranscript}`));
+      
+      // Process final result
+      this.processFinalResult(this.finalTranscript);
+    }
+  };
+
+  private onSpeechPartialResults = (event: SpeechResultsEvent) => {
+    const results = event.value || [];
+    if (results.length > 0) {
+      this.partialTranscript = results[0];
+      console.log('Partial result:', this.partialTranscript);
+      
+      // Update UI with partial transcript for real-time feedback
+      this.dispatch?.(updateTranscript(this.partialTranscript));
+      
+      // Reset silence timer on new speech
+      this.clearSilenceTimer();
+      this.startSilenceTimer();
+    }
+  };
+
+  private onSpeechError = (event: SpeechErrorEvent) => {
+    console.error('Speech recognition error:', event.error);
+    this.isListening = false;
+    this.dispatch?.(setListening(false));
+    this.clearTimers();
+  };
+
+  private onSpeechVolumeChanged = (event: any) => {
+    // Could be used for visual feedback (volume indicators)
+    const volume = event.value;
+    console.log('Speech volume:', volume);
+  };
+
+  private async processFinalResult(text: string) {
+    try {
+      // Send final transcript to backend for AI processing
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000'}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          transcript: this.finalTranscript,
+          role: 'Software Engineer', // Should come from session state
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Update transcript with AI response
+        this.dispatch?.(appendTranscript(`\nAI: ${data.response}`));
+        
+        // Start TTS for AI response with low latency
+        const ttsService = TTSService.getInstance();
+        await ttsService.streamAudio(data.response);
+      }
+
+    } catch (error) {
+      console.error('Error processing final result:', error);
+    }
+  }
+
+  private startSilenceTimer() {
+    this.silenceTimer = setTimeout(() => {
+      console.log('Silence timeout - stopping listening');
+      this.stopListening();
+    }, this.config.silenceTimeout);
+  }
+
+  private clearSilenceTimer() {
+    if (this.silenceTimer) {
+      clearTimeout(this.silenceTimer);
+      this.silenceTimer = null;
+    }
+  }
+
+  private clearTimers() {
+    if (this.streamingTimer) {
+      clearInterval(this.streamingTimer);
+      this.streamingTimer = null;
+    }
+    this.clearSilenceTimer();
+  }
+
+  public updateConfig(newConfig: Partial<STTConfig>) {
+    this.config = { ...this.config, ...newConfig };
+  }
+
+  public getConfig(): STTConfig {
+    return { ...this.config };
   }
 
   public isCurrentlyListening(): boolean {
     return this.isListening;
+  }
+
+  public getCurrentTranscript(): string {
+    return this.finalTranscript;
+  }
+
+  public getCurrentPartialTranscript(): string {
+    return this.partialTranscript;
+  }
+
+  public async destroy(): Promise<void> {
+    try {
+      await this.stopListening();
+      await Voice.destroy();
+      this.clearTimers();
+    } catch (error) {
+      console.error('Error destroying STT service:', error);
+    }
   }
 }
 

@@ -57,12 +57,23 @@ class Database {
 
   private async encrypt(data: string): Promise<string> {
     try {
-      const hash = await Crypto.digestStringAsync(
+      // Generate a random IV for each encryption
+      const iv = await Crypto.getRandomBytesAsync(16);
+      const ivString = Array.from(iv).map(b => b.toString(16).padStart(2, '0')).join('');
+      
+      // Create a key from our secret + IV
+      const keyMaterial = ENCRYPTION_KEY + ivString;
+      const key = await Crypto.digestStringAsync(
         Crypto.CryptoDigestAlgorithm.SHA256,
-        ENCRYPTION_KEY + data,
-        { encoding: Crypto.CryptoEncoding.BASE64 }
+        keyMaterial,
+        { encoding: Crypto.CryptoEncoding.HEX }
       );
-      return hash;
+      
+      // Simple XOR encryption (in production, use proper AES)
+      const encrypted = this.xorEncrypt(data, key);
+      
+      // Prepend IV to encrypted data
+      return ivString + encrypted;
     } catch (error) {
       console.error('Error encrypting data:', error);
       throw error;
@@ -70,9 +81,40 @@ class Database {
   }
 
   private async decrypt(encryptedData: string): Promise<string> {
-    // Note: This is a simplified implementation
-    // In production, you'd use proper encryption/decryption
-    return encryptedData;
+    try {
+      if (encryptedData.length < 32) {
+        throw new Error('Invalid encrypted data format');
+      }
+      
+      // Extract IV from the beginning
+      const ivString = encryptedData.substring(0, 32);
+      const encrypted = encryptedData.substring(32);
+      
+      // Recreate the key
+      const keyMaterial = ENCRYPTION_KEY + ivString;
+      const key = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        keyMaterial,
+        { encoding: Crypto.CryptoEncoding.HEX }
+      );
+      
+      // Decrypt using XOR
+      return this.xorEncrypt(encrypted, key);
+    } catch (error) {
+      console.error('Error decrypting data:', error);
+      throw error;
+    }
+  }
+
+  private xorEncrypt(text: string, key: string): string {
+    let result = '';
+    for (let i = 0; i < text.length; i++) {
+      const textChar = text.charCodeAt(i);
+      const keyChar = key.charCodeAt(i % key.length);
+      result += String.fromCharCode(textChar ^ keyChar);
+    }
+    // Convert to base64 for safe storage
+    return Buffer.from(result, 'binary').toString('base64');
   }
 
   public async saveSession(session: InterviewSession): Promise<void> {
