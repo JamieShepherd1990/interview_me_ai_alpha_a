@@ -10,7 +10,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch } from 'react-redux';
 import { Audio } from 'expo-av';
-import * as Haptics from 'expo-haptics';
+import HapticsService from '../services/HapticsService';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme';
 import { setMicrophonePermission } from '../store/slices/settingsSlice';
@@ -69,7 +69,8 @@ export default function OnboardingScreen() {
       dispatch(setMicrophonePermission(granted));
       
       if (granted) {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        const haptics = HapticsService.getInstance();
+        await haptics.notificationAsync('Success');
       } else {
         Alert.alert(
           'Permission Required',
@@ -84,7 +85,8 @@ export default function OnboardingScreen() {
   };
 
   const handleNext = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const haptics = HapticsService.getInstance();
+    await haptics.impactAsync('Light');
     
     if (currentSlide === slides.length - 1) {
       if (!permissionGranted) {
@@ -106,7 +108,8 @@ export default function OnboardingScreen() {
   };
 
   const handleSkip = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const haptics = HapticsService.getInstance();
+    await haptics.impactAsync('Light');
     navigation.navigate('Main' as never);
   };
 
