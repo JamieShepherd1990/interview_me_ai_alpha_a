@@ -1,128 +1,190 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
-import { useDispatch, useSelector } from 'react-redux';
-import { useColorScheme } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-
-import { RootState, AppDispatch } from '../store';
-import { 
-  startSession, 
-  endSession, 
-  updateTimer, 
-  setSpeaking, 
-  setThinking,
-  addTranscriptEntry 
-} from '../store/slices/sessionSlice';
-import { STTService } from '../services/STTService';
-import { TTSService } from '../services/TTSService';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, TextInput, ScrollView } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { useSelector, useDispatch } from 'react-redux';
+import Voice, { SpeechResultsEvent, SpeechErrorEvent } from '@react-native-voice/voice';
+import { Audio } from 'expo-av';
+import * as Speech from 'expo-speech';
+import { RootState } from '../store';
+import { startSession, endSession, updateTranscript, setListening, setSpeaking, appendTranscript } from '../store/slices/sessionSlice';
 import Avatar from '../components/features/Avatar';
 
 export default function InterviewScreen() {
-  const route = useRoute();
   const navigation = useNavigation();
-  const dispatch = useDispatch<AppDispatch>();
-  const { colorScheme } = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const dispatch = useDispatch();
+  const session = useSelector((state: RootState) => state.session);
+  
+  const [timer, setTimer] = useState(0);
+  const [isRecording, setIsRecording] = useState(false);
+  const [hasPermission, setHasPermission] = useState(false);
+  const [currentResponse, setCurrentResponse] = useState('');
+  const [conversationHistory, setConversationHistory] = useState([]);
 
-  const { sessionId, interviewType, role } = route.params as any;
-  const { status, timer, transcript, isRecording, isSpeaking, isThinking } = useSelector(
-    (state: RootState) => state.session
-  );
-
-  const [currentQuestion, setCurrentQuestion] = useState<string>('');
-  const sttService = useRef(STTService.getInstance());
-  const ttsService = useRef(TTSService.getInstance());
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-
+  // Initialize voice recognition
   useEffect(() => {
-    initializeSession();
+    initializeVoice();
+    requestPermissions();
+    
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-      sttService.current.destroy();
-      ttsService.current.destroy();
+      Voice.destroy().then(Voice.removeAllListeners);
     };
   }, []);
 
-  const initializeSession = async () => {
+  const initializeVoice = () => {
+    Voice.onSpeechStart = onSpeechStart;
+    Voice.onSpeechEnd = onSpeechEnd;
+    Voice.onSpeechResults = onSpeechResults;
+    Voice.onSpeechPartialResults = onSpeechPartialResults;
+    Voice.onSpeechError = onSpeechError;
+  };
+
+  const requestPermissions = async () => {
     try {
-      // Start the session
-      dispatch(startSession({ sessionId, interviewType, role }));
-      
-      // Initialize services
-      await ttsService.current.initialize();
-      sttService.current.setDispatch(dispatch);
-      
-      // Start the interview
-      await startInterview();
-      
-      // Start timer
-      startTimer();
+      const { status } = await Audio.requestPermissionsAsync();
+      setHasPermission(status === 'granted');
     } catch (error) {
-      console.error('Session initialization error:', error);
-      Alert.alert('Error', 'Failed to start interview session');
+      console.error('Error requesting permissions:', error);
     }
   };
 
-  const startInterview = async () => {
+  const onSpeechStart = () => {
+    console.log('Speech started');
+    setIsRecording(true);
+    dispatch(setListening(true));
+    
+    // Barge-in logic: Stop AI speaking if user starts talking
+    if (session.isSpeaking) {
+      Speech.stop();
+      dispatch(setSpeaking(false));
+    }
+  };
+
+  const onSpeechEnd = () => {
+    console.log('Speech ended');
+    setIsRecording(false);
+    dispatch(setListening(false));
+  };
+
+  const onSpeechResults = (event: SpeechResultsEvent) => {
+    const spokenText = event.value?.[0] || '';
+    console.log('Speech results:', spokenText);
+    
+    if (spokenText.trim()) {
+      dispatch(updateTranscript(spokenText));
+      setConversationHistory(prev => [...prev, {
+        type: 'user',
+        text: spokenText,
+        timestamp: Date.now()
+      }]);
+      
+      // Generate AI response
+      generateAIResponse(spokenText);
+    }
+  };
+
+  const onSpeechPartialResults = (event: SpeechResultsEvent) => {
+    const partialText = event.value?.[0] || '';
+    dispatch(updateTranscript(partialText));
+  };
+
+  const onSpeechError = (event: SpeechErrorEvent) => {
+    console.error('Speech error:', event.error);
+    setIsRecording(false);
+    dispatch(setListening(false));
+  };
+
+  const generateAIResponse = async (userInput: string) => {
     try {
-      // Generate initial question using AI
+      dispatch(setSpeaking(true));
+      
+      // Call backend API for real AI response
       const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
-          messages: [
-            {
-              role: 'system',
-              content: `You are InterviewCoach AI. Start a ${interviewType} interview for a ${role} position. Ask the first question.`
-            }
-          ]
-        })
+          message: userInput,
+          transcript: session.transcript,
+          role: 'Software Engineer', // Get from route params
+        }),
       });
-
-      const data = await response.json();
-      const question = data.message;
       
-      setCurrentQuestion(question);
-      dispatch(addTranscriptEntry({
-        timestamp: Date.now(),
-        speaker: 'ai',
-        text: question
-      }));
-
-      // Speak the question
-      dispatch(setSpeaking(true));
-      await ttsService.current.speak(question);
+      if (response.ok) {
+        const data = await response.json();
+        const aiResponse = data.response;
+        
+        // Add AI response to conversation
+        setConversationHistory(prev => [...prev, {
+          type: 'ai',
+          text: aiResponse,
+          timestamp: Date.now()
+        }]);
+        
+        // Speak the AI response
+        await speakText(aiResponse);
+      }
+    } catch (error) {
+      console.error('Error generating AI response:', error);
       dispatch(setSpeaking(false));
-
-      // Start listening for user response
-      await sttService.current.startListening();
-    } catch (error) {
-      console.error('Interview start error:', error);
     }
   };
 
-  const startTimer = () => {
-    timerRef.current = setInterval(() => {
-      dispatch(updateTimer(timer - 1));
-    }, 1000);
-  };
-
-  const handleEndSession = async () => {
+  const speakText = async (text: string) => {
     try {
-      await sttService.current.stopListening();
-      await ttsService.current.stop();
-      dispatch(endSession());
-      
-      if (timerRef.current) clearInterval(timerRef.current);
-      
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      navigation.navigate('InterviewFlow', { screen: 'Feedback', params: { sessionId } });
+      await Speech.speak(text, {
+        language: 'en-US',
+        pitch: 1.0,
+        rate: 0.85,
+        onDone: () => {
+          dispatch(setSpeaking(false));
+          // Automatically start listening for next response
+          setTimeout(() => {
+            startVoiceRecognition();
+          }, 1000);
+        },
+        onError: () => dispatch(setSpeaking(false)),
+      });
     } catch (error) {
-      console.error('End session error:', error);
+      console.error('Error speaking text:', error);
+      dispatch(setSpeaking(false));
     }
   };
+
+  const startVoiceRecognition = async () => {
+    try {
+      if (!hasPermission) {
+        Alert.alert(
+          'Permission Required',
+          'Microphone access is required for voice interviews.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+      
+      await Voice.start('en-US');
+    } catch (error) {
+      console.error('Error starting voice recognition:', error);
+    }
+  };
+
+  const stopVoiceRecognition = async () => {
+    try {
+      await Voice.stop();
+    } catch (error) {
+      console.error('Error stopping voice recognition:', error);
+    }
+  };
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (session.status === 'active') {
+      interval = setInterval(() => {
+        setTimer(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [session.status]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -130,82 +192,348 @@ export default function InterviewScreen() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const handleStartInterview = () => {
+    dispatch(startSession({ question: "Tell me about yourself and your experience." }));
+    setTimer(0);
+  };
+
+  const handleEndInterview = () => {
+    Alert.alert(
+      'End Interview',
+      'Are you sure you want to end this interview session?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'End', 
+          style: 'destructive',
+          onPress: () => {
+            dispatch(endSession());
+            navigation.navigate('Feedback' as never, { sessionId: 'temp-id' } as never);
+          }
+        }
+      ]
+    );
+  };
+
+  const toggleRecording = () => {
+    if (isRecording) {
+      setIsRecording(false);
+      dispatch(setListening(false));
+    } else {
+      setIsRecording(true);
+      dispatch(setListening(true));
+    }
+  };
+
+  if (session.status === 'idle') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <Text style={styles.title}>Ready to Start?</Text>
+          <Text style={styles.subtitle}>Your AI interview coach is ready</Text>
+          
+          <TouchableOpacity style={styles.startButton} onPress={handleStartInterview}>
+            <Text style={styles.buttonText}>Start Interview</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   return (
-    <View className={`flex-1 ${isDark ? 'bg-slate-900' : 'bg-white'}`}>
-      {/* Header with Timer */}
-      <View className={`px-6 py-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-        <View className="flex-row items-center justify-between">
-          <Text className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-            {role} Interview
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.timer}>{formatTime(timer)}</Text>
+        <Text style={styles.status}>
+          {session.isSpeaking ? '🎤 AI Speaking' : session.isListening ? '🎙️ Listening' : '⏸️ Ready'}
+        </Text>
+      </View>
+
+      <View style={styles.avatarContainer}>
+        <Avatar 
+          state={session.isSpeaking ? 'speaking' : session.isListening ? 'listening' : 'idle'}
+        />
+        <Text style={styles.avatarLabel}>AI Interview Coach</Text>
+      </View>
+
+      <View style={styles.statusCard}>
+        <Text style={styles.statusText}>
+          {hasPermission ? '✅ Microphone Ready' : '❌ Microphone Permission Required'}
+        </Text>
+        <Text style={styles.permissionText}>
+          Real-time voice conversation active
+        </Text>
+      </View>
+
+      <View style={styles.transcriptContainer}>
+        <Text style={styles.transcriptTitle}>Live Transcript</Text>
+        <View style={styles.transcriptBox}>
+          <Text style={styles.transcriptText}>
+            {session.transcript || 'Start speaking to see your transcript here...'}
           </Text>
-          <View className="flex-row items-center">
-            <Ionicons 
-              name="time-outline" 
-              size={20} 
-              color={isDark ? '#f8fafc' : '#1e293b'} 
-            />
-            <Text className={`ml-2 font-mono text-lg ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              {formatTime(timer)}
-            </Text>
-          </View>
         </View>
       </View>
 
-      {/* Avatar Section */}
-      <View className="flex-1 items-center justify-center px-6">
-        <Avatar 
-          state={isSpeaking ? 'speaking' : isThinking ? 'thinking' : 'listening'}
-          visemeStream={[]}
-        />
-        
-        {currentQuestion && (
-          <View className={`mt-6 p-4 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
-            <Text className={`text-center ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              {currentQuestion}
-            </Text>
-          </View>
-        )}
-      </View>
+      {conversationHistory.length > 0 && (
+        <View style={styles.conversationContainer}>
+          <Text style={styles.conversationTitle}>Conversation History</Text>
+          <ScrollView style={styles.conversationScroll} nestedScrollEnabled>
+            {conversationHistory.slice(-3).map((item, index) => (
+              <View key={index} style={styles.conversationItem}>
+                <Text style={styles.conversationLabel}>
+                  {item.type === 'ai' ? '🤖 AI:' : '👤 You:'}
+                </Text>
+                <Text style={styles.conversationText}>{item.text}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
-      {/* Transcript */}
-      <View className={`px-6 py-4 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-        <Text className={`font-semibold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-          Conversation
-        </Text>
-        <ScrollView className="max-h-32">
-          {transcript.map((entry, index) => (
-            <View key={index} className={`mb-2 p-2 rounded ${
-              entry.speaker === 'user' 
-                ? (isDark ? 'bg-blue-900' : 'bg-blue-100') 
-                : (isDark ? 'bg-slate-700' : 'bg-slate-200')
-            }`}>
-              <Text className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                {entry.speaker === 'user' ? 'You' : 'AI Coach'}
-              </Text>
-              <Text className={`${isDark ? 'text-white' : 'text-slate-900'}`}>
-                {entry.text}
-              </Text>
-            </View>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* Controls */}
-      <View className="px-6 py-4">
+      <View style={styles.controls}>
         <TouchableOpacity
-          onPress={handleEndSession}
-          className={`py-3 px-6 rounded-lg ${
-            isDark ? 'bg-red-600' : 'bg-red-500'
-          } shadow-lg`}
+          style={[
+            styles.voiceButton,
+            session.isListening ? styles.listeningButton : styles.silentButton
+          ]}
+          onPress={session.isListening ? stopVoiceRecognition : startVoiceRecognition}
         >
-          <View className="flex-row items-center justify-center">
-            <Ionicons name="stop" size={20} color="white" />
-            <Text className="text-white font-semibold ml-2">
-              End Interview
-            </Text>
-          </View>
+          <Text style={styles.controlButtonText}>
+            {session.isListening ? 'Stop Listening' : 'Start Listening'}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.endButton} onPress={handleEndInterview}>
+          <Text style={styles.endButtonText}>End Interview</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 30,
+    textAlign: 'center',
+  },
+  startButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 12,
+    shadowColor: '#007AFF',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  timer: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#007AFF',
+  },
+  status: {
+    fontSize: 16,
+    color: '#666',
+  },
+  avatarContainer: {
+    alignItems: 'center',
+    padding: 40,
+  },
+  avatar: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    shadowColor: '#007AFF',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  avatarText: {
+    fontSize: 48,
+  },
+  avatarLabel: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
+  },
+  transcriptContainer: {
+    flex: 1,
+    padding: 20,
+  },
+  transcriptTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+  },
+  transcriptBox: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 15,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  transcriptText: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: '#333',
+  },
+  controls: {
+    flexDirection: 'row',
+    padding: 20,
+    gap: 15,
+  },
+  controlButton: {
+    flex: 1,
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  recordingButton: {
+    backgroundColor: '#FF3B30',
+  },
+  silentButton: {
+    backgroundColor: '#34C759',
+  },
+  controlButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  endButton: {
+    flex: 1,
+    backgroundColor: '#FF3B30',
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  endButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  statusCard: {
+    backgroundColor: 'white',
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  statusText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 5,
+  },
+  permissionText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  conversationContainer: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 20,
+    maxHeight: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  conversationTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+  },
+  conversationScroll: {
+    maxHeight: 150,
+  },
+  conversationItem: {
+    marginBottom: 10,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  conversationLabel: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#007AFF',
+    marginBottom: 4,
+  },
+  conversationText: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 18,
+  },
+  voiceButton: {
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  listeningButton: {
+    backgroundColor: '#FF3B30',
+  },
+  silentButton: {
+    backgroundColor: '#34C759',
+  },
+});

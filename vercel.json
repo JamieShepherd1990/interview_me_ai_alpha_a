@@ -1,0 +1,20 @@
+{
+  "functions": {
+    "api/chat.ts": {
+      "runtime": "@vercel/node"
+    },
+    "api/feedback.ts": {
+      "runtime": "@vercel/node"
+    },
+    "api/tts.ts": {
+      "runtime": "@vercel/node"
+    },
+    "api/health.ts": {
+      "runtime": "@vercel/node"
+    }
+  },
+  "env": {
+    "OPENAI_API_KEY": "@openai_api_key",
+    "ELEVENLABS_API_KEY": "@elevenlabs_api_key"
+  }
+}

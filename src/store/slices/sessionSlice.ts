@@ -1,29 +1,15 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-export interface TranscriptEntry {
-  id: string;
-  timestamp: number;
-  speaker: 'user' | 'ai';
-  text: string;
-  isPartial?: boolean;
-}
-
 export interface SessionState {
-  status: 'idle' | 'preparing' | 'active' | 'paused' | 'ended';
-  sessionId: string | null;
+  status: 'idle' | 'preparing' | 'active' | 'paused' | 'completed';
   startTime: number | null;
-  endTime: number | null;
-  duration: number; // in seconds
-  interviewType: string | null;
-  role: string | null;
-  transcript: TranscriptEntry[];
-  currentQuestion: string | null;
-  isRecording: boolean;
+  duration: number;
+  transcript: string;
+  currentQuestion: string;
+  isListening: boolean;
   isSpeaking: boolean;
-  isThinking: boolean;
-  timer: number; // countdown timer in seconds (15 minutes = 900)
-  score: number | null;
   feedback: {
+    score: number;
     strengths: string[];
     improvements: string[];
     learnings: string[];
@@ -32,19 +18,12 @@ export interface SessionState {
 
 const initialState: SessionState = {
   status: 'idle',
-  sessionId: null,
   startTime: null,
-  endTime: null,
   duration: 0,
-  interviewType: null,
-  role: null,
-  transcript: [],
-  currentQuestion: null,
-  isRecording: false,
+  transcript: '',
+  currentQuestion: '',
+  isListening: false,
   isSpeaking: false,
-  isThinking: false,
-  timer: 900, // 15 minutes
-  score: null,
   feedback: null,
 };
 
@@ -52,143 +31,65 @@ const sessionSlice = createSlice({
   name: 'session',
   initialState,
   reducers: {
-    startSession: (state, action: PayloadAction<{ sessionId: string; interviewType: string; role: string }>) => {
+    startSession: (state, action: PayloadAction<{ question: string }>) => {
       state.status = 'active';
-      state.sessionId = action.payload.sessionId;
-      state.interviewType = action.payload.interviewType;
-      state.role = action.payload.role;
       state.startTime = Date.now();
-      state.transcript = [];
-      state.timer = 900;
-      state.score = null;
-      state.feedback = null;
-    },
-    endSession: (state) => {
-      state.status = 'ended';
-      state.endTime = Date.now();
-      if (state.startTime) {
-        state.duration = Math.floor((state.endTime - state.startTime) / 1000);
-      }
-      state.isRecording = false;
+      state.duration = 0;
+      state.transcript = '';
+      state.currentQuestion = action.payload.question;
+      state.isListening = true;
       state.isSpeaking = false;
-      state.isThinking = false;
+      state.feedback = null;
     },
     pauseSession: (state) => {
       state.status = 'paused';
-      state.isRecording = false;
+      state.isListening = false;
     },
     resumeSession: (state) => {
       state.status = 'active';
+      state.isListening = true;
     },
-    resetSession: (state) => {
-      return initialState;
+    endSession: (state) => {
+      state.status = 'completed';
+      state.isListening = false;
+      state.isSpeaking = false;
     },
-    updateTimer: (state, action: PayloadAction<number>) => {
-      state.timer = action.payload;
-      if (state.timer <= 0) {
-        state.status = 'ended';
-        state.endTime = Date.now();
-        if (state.startTime) {
-          state.duration = Math.floor((state.endTime - state.startTime) / 1000);
-        }
-      }
+    updateTranscript: (state, action: PayloadAction<string>) => {
+      state.transcript = action.payload;
     },
-    addTranscriptEntry: (state, action: PayloadAction<Omit<TranscriptEntry, 'id'>>) => {
-      const entry: TranscriptEntry = {
-        ...action.payload,
-        id: `${Date.now()}-${Math.random()}`,
-      };
-      
-      // If it's a partial transcript, update the last entry if it's from the same speaker
-      if (entry.isPartial && state.transcript.length > 0) {
-        const lastEntry = state.transcript[state.transcript.length - 1];
-        if (lastEntry.speaker === entry.speaker && lastEntry.isPartial) {
-          state.transcript[state.transcript.length - 1] = entry;
-          return;
-        }
-      }
-      
-      state.transcript.push(entry);
+    appendTranscript: (state, action: PayloadAction<string>) => {
+      state.transcript += action.payload;
     },
-    updatePartialTranscript: (state, action: PayloadAction<{ text: string; speaker: 'user' | 'ai' }>) => {
-      const { text, speaker } = action.payload;
-      const lastEntry = state.transcript[state.transcript.length - 1];
-      
-      if (lastEntry && lastEntry.speaker === speaker && lastEntry.isPartial) {
-        lastEntry.text = text;
-        lastEntry.timestamp = Date.now();
-      } else {
-        state.transcript.push({
-          id: `${Date.now()}-${Math.random()}`,
-          timestamp: Date.now(),
-          speaker,
-          text,
-          isPartial: true,
-        });
-      }
-    },
-    finalizeTranscriptEntry: (state, action: PayloadAction<{ text: string; speaker: 'user' | 'ai' }>) => {
-      const { text, speaker } = action.payload;
-      const lastEntry = state.transcript[state.transcript.length - 1];
-      
-      if (lastEntry && lastEntry.speaker === speaker && lastEntry.isPartial) {
-        lastEntry.text = text;
-        lastEntry.isPartial = false;
-        lastEntry.timestamp = Date.now();
-      } else {
-        state.transcript.push({
-          id: `${Date.now()}-${Math.random()}`,
-          timestamp: Date.now(),
-          speaker,
-          text,
-          isPartial: false,
-        });
-      }
-    },
-    setRecording: (state, action: PayloadAction<boolean>) => {
-      state.isRecording = action.payload;
+    setListening: (state, action: PayloadAction<boolean>) => {
+      state.isListening = action.payload;
     },
     setSpeaking: (state, action: PayloadAction<boolean>) => {
       state.isSpeaking = action.payload;
-      if (action.payload) {
-        state.isThinking = false;
-      }
     },
-    setThinking: (state, action: PayloadAction<boolean>) => {
-      state.isThinking = action.payload;
-      if (action.payload) {
-        state.isSpeaking = false;
-      }
+    updateDuration: (state, action: PayloadAction<number>) => {
+      state.duration = action.payload;
     },
-    setCurrentQuestion: (state, action: PayloadAction<string>) => {
-      state.currentQuestion = action.payload;
+    setFeedback: (state, action: PayloadAction<SessionState['feedback']>) => {
+      state.feedback = action.payload;
     },
-    setFeedback: (state, action: PayloadAction<{ score: number; strengths: string[]; improvements: string[]; learnings: string[] }>) => {
-      state.score = action.payload.score;
-      state.feedback = {
-        strengths: action.payload.strengths,
-        improvements: action.payload.improvements,
-        learnings: action.payload.learnings,
-      };
+    resetSession: (state) => {
+      return { ...initialState };
     },
   },
 });
 
 export const {
   startSession,
-  endSession,
   pauseSession,
   resumeSession,
-  resetSession,
-  updateTimer,
-  addTranscriptEntry,
-  updatePartialTranscript,
-  finalizeTranscriptEntry,
-  setRecording,
+  endSession,
+  updateTranscript,
+  appendTranscript,
+  setListening,
   setSpeaking,
-  setThinking,
-  setCurrentQuestion,
+  updateDuration,
   setFeedback,
+  resetSession,
 } = sessionSlice.actions;
 
 export default sessionSlice.reducer;

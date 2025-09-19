@@ -1,20 +1,34 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
-// Types for API responses
-export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+
+export interface ChatRequest {
+  message: string;
+  transcript: string;
+  role: string;
 }
 
 export interface ChatResponse {
-  message: string;
-  id: string;
-  model: string;
-  usage?: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-  };
+  response: string;
+  isComplete: boolean;
+}
+
+export interface TTSRequest {
+  text: string;
+  voiceId?: string;
+}
+
+export interface TTSResponse {
+  audioUrl: string;
+  visemes: Array<{
+    timestamp: number;
+    phoneme: string;
+  }>;
+}
+
+export interface FeedbackRequest {
+  transcript: string;
+  role: string;
 }
 
 export interface FeedbackResponse {
@@ -24,73 +38,47 @@ export interface FeedbackResponse {
   learnings: string[];
 }
 
-export interface TTSRequest {
-  text: string;
-  voice_id: string;
-  model_id?: string;
-  voice_settings?: {
-    stability: number;
-    similarity_boost: number;
-    style?: number;
-    use_speaker_boost?: boolean;
-  };
-}
-
-// Base URL will be set to your backend proxy
-const baseUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
-
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({
-    baseUrl,
+    baseUrl: API_URL,
     prepareHeaders: (headers) => {
       headers.set('Content-Type', 'application/json');
       return headers;
     },
   }),
-  tagTypes: ['Chat', 'TTS', 'Feedback'],
+  tagTypes: ['Session'],
   endpoints: (builder) => ({
-    // Chat with OpenAI via backend proxy
-    sendChatMessage: builder.mutation<ChatResponse, { messages: ChatMessage[] }>({
+    sendChat: builder.mutation<ChatResponse, ChatRequest>({
       query: (body) => ({
         url: '/chat',
         method: 'POST',
         body,
       }),
-      invalidatesTags: ['Chat'],
     }),
-    
-    // Get feedback from AI
-    getFeedback: builder.mutation<FeedbackResponse, { transcript: string; role: string; interviewType: string }>({
+    generateTTS: builder.mutation<TTSResponse, TTSRequest>({
+      query: (body) => ({
+        url: '/tts',
+        method: 'POST',
+        body,
+      }),
+    }),
+    generateFeedback: builder.mutation<FeedbackResponse, FeedbackRequest>({
       query: (body) => ({
         url: '/feedback',
         method: 'POST',
         body,
       }),
-      invalidatesTags: ['Feedback'],
     }),
-    
-    // Text-to-Speech via ElevenLabs proxy
-    generateSpeech: builder.mutation<Blob, TTSRequest>({
-      query: (body) => ({
-        url: '/tts',
-        method: 'POST',
-        body,
-        responseHandler: 'blob',
-      }),
-      invalidatesTags: ['TTS'],
-    }),
-    
-    // Health check for backend
-    healthCheck: builder.query<{ status: string; timestamp: number }, void>({
+    healthCheck: builder.query<{ status: string }, void>({
       query: () => '/health',
     }),
   }),
 });
 
 export const {
-  useSendChatMessageMutation,
-  useGetFeedbackMutation,
-  useGenerateSpeechMutation,
+  useSendChatMutation,
+  useGenerateTTSMutation,
+  useGenerateFeedbackMutation,
   useHealthCheckQuery,
 } = apiSlice;

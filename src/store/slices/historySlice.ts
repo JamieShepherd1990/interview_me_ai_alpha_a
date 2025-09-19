@@ -1,85 +1,66 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { TranscriptEntry } from './sessionSlice';
 
-export interface HistorySession {
+export interface InterviewSession {
   id: string;
-  timestamp: number;
-  interviewType: string;
+  title: string;
   role: string;
-  duration: number; // in seconds
+  startTime: number;
+  duration: number;
+  transcript: string;
   score: number;
-  transcript: TranscriptEntry[];
-  feedback: {
-    strengths: string[];
-    improvements: string[];
-    learnings: string[];
-  };
-  isSaved: boolean;
+  strengths: string[];
+  improvements: string[];
+  learnings: string[];
+  createdAt: number;
 }
 
-interface HistoryState {
-  sessions: HistorySession[];
+export interface HistoryState {
+  sessions: InterviewSession[];
   isLoading: boolean;
-  searchQuery: string;
-  sortBy: 'date' | 'score' | 'duration';
-  sortOrder: 'asc' | 'desc';
+  error: string | null;
 }
 
 const initialState: HistoryState = {
   sessions: [],
   isLoading: false,
-  searchQuery: '',
-  sortBy: 'date',
-  sortOrder: 'desc',
+  error: null,
 };
 
 const historySlice = createSlice({
   name: 'history',
   initialState,
   reducers: {
-    setLoading: (state, action: PayloadAction<boolean>) => {
-      state.isLoading = action.payload;
+    addSession: (state, action: PayloadAction<InterviewSession>) => {
+      state.sessions.unshift(action.payload);
     },
-    setSessions: (state, action: PayloadAction<HistorySession[]>) => {
-      state.sessions = action.payload;
-    },
-    addSession: (state, action: PayloadAction<HistorySession>) => {
-      state.sessions.unshift(action.payload); // Add to beginning for newest first
-    },
-    updateSession: (state, action: PayloadAction<{ id: string; updates: Partial<HistorySession> }>) => {
-      const index = state.sessions.findIndex(session => session.id === action.payload.id);
-      if (index !== -1) {
-        state.sessions[index] = { ...state.sessions[index], ...action.payload.updates };
+    updateSession: (state, action: PayloadAction<{ id: string; updates: Partial<InterviewSession> }>) => {
+      const session = state.sessions.find(s => s.id === action.payload.id);
+      if (session) {
+        Object.assign(session, action.payload.updates);
       }
     },
     deleteSession: (state, action: PayloadAction<string>) => {
-      state.sessions = state.sessions.filter(session => session.id !== action.payload);
+      state.sessions = state.sessions.filter(s => s.id !== action.payload);
     },
-    setSearchQuery: (state, action: PayloadAction<string>) => {
-      state.searchQuery = action.payload;
+    setSessions: (state, action: PayloadAction<InterviewSession[]>) => {
+      state.sessions = action.payload;
     },
-    setSortBy: (state, action: PayloadAction<'date' | 'score' | 'duration'>) => {
-      state.sortBy = action.payload;
+    setLoading: (state, action: PayloadAction<boolean>) => {
+      state.isLoading = action.payload;
     },
-    setSortOrder: (state, action: PayloadAction<'asc' | 'desc'>) => {
-      state.sortOrder = action.payload;
-    },
-    clearHistory: (state) => {
-      state.sessions = [];
+    setError: (state, action: PayloadAction<string | null>) => {
+      state.error = action.payload;
     },
   },
 });
 
 export const {
-  setLoading,
-  setSessions,
   addSession,
   updateSession,
   deleteSession,
-  setSearchQuery,
-  setSortBy,
-  setSortOrder,
-  clearHistory,
+  setSessions,
+  setLoading,
+  setError,
 } = historySlice.actions;
 
 export default historySlice.reducer;

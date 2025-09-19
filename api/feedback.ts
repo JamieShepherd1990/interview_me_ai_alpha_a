@@ -1,63 +1,21 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
-import { FEEDBACK_GENERATION_PROMPT } from '../src/lib/prompts';
+import { NextApiRequest, NextApiResponse } from 'next';
 
-interface FeedbackRequest {
-  transcript: string;
-  role: string;
-  interviewType: string;
+const openaiApiKey = process.env.OPENAI_API_KEY;
+if (!openaiApiKey) {
+  console.error('OpenAI API key not configured');
 }
 
-interface FeedbackResponse {
-  score: number;
-  strengths: string[];
-  improvements: string[];
-  learnings: string[];
-}
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  if (!openaiApiKey) {
+    return res.status(500).json({ error: 'OpenAI API key not configured' });
+  }
+
   try {
-    const { transcript, role, interviewType }: FeedbackRequest = req.body;
-
-    if (!transcript || !role || !interviewType) {
-      return res.status(400).json({ 
-        error: 'Transcript, role, and interviewType are required' 
-      });
-    }
-
-    const openaiApiKey = process.env.OPENAI_API_KEY;
-    if (!openaiApiKey) {
-      console.error('OpenAI API key not configured');
-      return res.status(500).json({ error: 'OpenAI API key not configured' });
-    }
-
-    const messages = [
-      {
-        role: 'system' as const,
-        content: FEEDBACK_GENERATION_PROMPT,
-      },
-      {
-        role: 'user' as const,
-        content: `Please analyze this ${interviewType} interview for a ${role} position:
-
-TRANSCRIPT:
-${transcript}
-
-Provide feedback in the exact JSON format specified.`,
-      },
-    ];
+    const { transcript, role } = req.body;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -67,74 +25,58 @@ Provide feedback in the exact JSON format specified.`,
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
-        messages,
+        messages: [
+          {
+            role: 'system',
+            content: `You are an AI interview coach analyzing a mock interview session. Provide detailed feedback in JSON format only.
+
+Role: ${role}
+Transcript: ${transcript}
+
+Respond with a JSON object matching this exact structure:
+{
+  "score": number (0-10),
+  "strengths": ["strength1", "strength2", "strength3"],
+  "improvements": ["improvement1", "improvement2", "improvement3"],
+  "learnings": ["learning1", "learning2", "learning3"]
+}
+
+Focus on:
+- Communication clarity
+- STAR method usage
+- Professional demeanor
+- Role-specific knowledge
+- Areas for improvement
+
+Do not include any text outside the JSON object.`
+          }
+        ],
         max_tokens: 500,
-        temperature: 0.3, // Lower temperature for more consistent JSON output
-        stream: false,
+        temperature: 0.3,
       }),
     });
 
     if (!response.ok) {
-      const errorData = await response.text();
-      console.error('OpenAI API error:', errorData);
-      return res.status(response.status).json({ 
-        error: 'OpenAI API error',
-        details: errorData 
-      });
+      throw new Error(`OpenAI API error: ${response.status}`);
     }
 
     const data = await response.json();
-    const feedbackText = data.choices[0]?.message?.content || '';
-    
+    const feedbackText = data.choices[0]?.message?.content || '{}';
+
     try {
-      // Parse the JSON response
-      const feedback: FeedbackResponse = JSON.parse(feedbackText.trim());
-      
-      // Validate the response structure
-      if (
-        typeof feedback.score !== 'number' ||
-        !Array.isArray(feedback.strengths) ||
-        !Array.isArray(feedback.improvements) ||
-        !Array.isArray(feedback.learnings) ||
-        feedback.strengths.length !== 3 ||
-        feedback.improvements.length !== 3 ||
-        feedback.learnings.length !== 3
-      ) {
-        throw new Error('Invalid feedback structure');
-      }
-
-      return res.status(200).json(feedback);
-
+      const feedback = JSON.parse(feedbackText);
+      res.status(200).json(feedback);
     } catch (parseError) {
-      console.error('Failed to parse feedback JSON:', parseError);
-      console.error('Raw response:', feedbackText);
-      
-      // Return a fallback response
-      return res.status(200).json({
-        score: 6,
-        strengths: [
-          "You participated actively in the interview",
-          "You showed enthusiasm for the role",
-          "You attempted to answer all questions"
-        ],
-        improvements: [
-          "Provide more specific examples in your responses",
-          "Use the STAR method to structure your answers",
-          "Practice speaking more confidently and clearly"
-        ],
-        learnings: [
-          "Prepare concrete examples before interviews",
-          "Research the company and role thoroughly",
-          "Practice common interview questions out loud"
-        ]
+      // Fallback if JSON parsing fails
+      res.status(200).json({
+        score: 7,
+        strengths: ["Good communication", "Professional demeanor", "Clear responses"],
+        improvements: ["Use more specific examples", "Practice STAR method", "Ask clarifying questions"],
+        learnings: ["Interview preparation", "Communication skills", "Professional presentation"]
       });
     }
-
   } catch (error) {
     console.error('Feedback API error:', error);
-    return res.status(500).json({ 
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
+    res.status(500).json({ error: 'Failed to generate feedback' });
   }
 }

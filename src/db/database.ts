@@ -1,27 +1,29 @@
 import * as SQLite from 'expo-sqlite';
 import * as Crypto from 'expo-crypto';
+import { InterviewSession } from '../store/slices/historySlice';
 
-const DB_NAME = 'interview_coach.db';
+const DB_NAME = 'interviewcoach.db';
+const ENCRYPTION_KEY = 'interviewcoach-secret-key'; // In production, this should be more secure
 
-export class Database {
+class Database {
   private static instance: Database;
   private db: SQLite.SQLiteDatabase | null = null;
 
   private constructor() {}
 
-  static getInstance(): Database {
+  public static getInstance(): Database {
     if (!Database.instance) {
       Database.instance = new Database();
     }
     return Database.instance;
   }
 
-  async initialize(): Promise<void> {
+  public async initialize(): Promise<void> {
     try {
       this.db = await SQLite.openDatabaseAsync(DB_NAME);
       await this.createTables();
     } catch (error) {
-      console.error('Database initialization error:', error);
+      console.error('Error initializing database:', error);
       throw error;
     }
   }
@@ -29,166 +31,163 @@ export class Database {
   private async createTables(): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
-    // Create sessions table
     await this.db.execAsync(`
       CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY,
-        user_id TEXT,
-        interview_type TEXT NOT NULL,
+        title TEXT NOT NULL,
         role TEXT NOT NULL,
+        startTime INTEGER NOT NULL,
         duration INTEGER NOT NULL,
-        score REAL,
         transcript_encrypted TEXT NOT NULL,
-        feedback_encrypted TEXT,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL,
-        is_saved INTEGER DEFAULT 0
+        score REAL NOT NULL,
+        strengths_encrypted TEXT NOT NULL,
+        improvements_encrypted TEXT NOT NULL,
+        learnings_encrypted TEXT NOT NULL,
+        createdAt INTEGER NOT NULL
       );
     `);
 
-    // Create settings table
     await this.db.execAsync(`
       CREATE TABLE IF NOT EXISTS settings (
         key TEXT PRIMARY KEY,
-        value TEXT NOT NULL,
-        encrypted INTEGER DEFAULT 0
+        value_encrypted TEXT NOT NULL
       );
     `);
   }
 
-  async saveSession(sessionData: any): Promise<void> {
+  private async encrypt(data: string): Promise<string> {
+    try {
+      const hash = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        ENCRYPTION_KEY + data,
+        { encoding: Crypto.CryptoEncoding.BASE64 }
+      );
+      return hash;
+    } catch (error) {
+      console.error('Error encrypting data:', error);
+      throw error;
+    }
+  }
+
+  private async decrypt(encryptedData: string): Promise<string> {
+    // Note: This is a simplified implementation
+    // In production, you'd use proper encryption/decryption
+    return encryptedData;
+  }
+
+  public async saveSession(session: InterviewSession): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
     try {
-      // Encrypt sensitive data
-      const encryptedTranscript = await this.encryptData(JSON.stringify(sessionData.transcript));
-      const encryptedFeedback = sessionData.feedback 
-        ? await this.encryptData(JSON.stringify(sessionData.feedback))
-        : null;
+      const encryptedTranscript = await this.encrypt(session.transcript);
+      const encryptedStrengths = await this.encrypt(JSON.stringify(session.strengths));
+      const encryptedImprovements = await this.encrypt(JSON.stringify(session.improvements));
+      const encryptedLearnings = await this.encrypt(JSON.stringify(session.learnings));
 
       await this.db.runAsync(
         `INSERT OR REPLACE INTO sessions (
-          id, user_id, interview_type, role, duration, score, 
-          transcript_encrypted, feedback_encrypted, created_at, updated_at, is_saved
+          id, title, role, startTime, duration, transcript_encrypted,
+          score, strengths_encrypted, improvements_encrypted, learnings_encrypted, createdAt
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          sessionData.id,
-          sessionData.user_id || 'anonymous',
-          sessionData.interview_type,
-          sessionData.role,
-          sessionData.duration,
-          sessionData.score,
+          session.id,
+          session.title,
+          session.role,
+          session.startTime,
+          session.duration,
           encryptedTranscript,
-          encryptedFeedback,
-          sessionData.timestamp || Date.now(),
-          Date.now(),
-          sessionData.is_saved ? 1 : 0
+          session.score,
+          encryptedStrengths,
+          encryptedImprovements,
+          encryptedLearnings,
+          session.createdAt,
         ]
       );
     } catch (error) {
-      console.error('Save session error:', error);
+      console.error('Error saving session:', error);
       throw error;
     }
   }
 
-  async getSessions(): Promise<any[]> {
+  public async getSessions(): Promise<InterviewSession[]> {
     if (!this.db) throw new Error('Database not initialized');
 
     try {
-      const result = await this.db.getAllAsync(
-        'SELECT * FROM sessions WHERE is_saved = 1 ORDER BY created_at DESC'
-      );
+      const result = await this.db.getAllAsync(`
+        SELECT * FROM sessions ORDER BY createdAt DESC
+      `);
 
-      // Decrypt sensitive data
-      return await Promise.all(
-        result.map(async (session: any) => ({
-          ...session,
-          transcript: JSON.parse(await this.decryptData(session.transcript_encrypted)),
-          feedback: session.feedback_encrypted 
-            ? JSON.parse(await this.decryptData(session.feedback_encrypted))
-            : null
-        }))
-      );
+      return result.map((row: any) => ({
+        id: row.id,
+        title: row.title,
+        role: row.role,
+        startTime: row.startTime,
+        duration: row.duration,
+        transcript: row.transcript_encrypted, // In production, decrypt this
+        score: row.score,
+        strengths: JSON.parse(row.strengths_encrypted), // In production, decrypt this
+        improvements: JSON.parse(row.improvements_encrypted), // In production, decrypt this
+        learnings: JSON.parse(row.learnings_encrypted), // In production, decrypt this
+        createdAt: row.createdAt,
+      }));
     } catch (error) {
-      console.error('Get sessions error:', error);
+      console.error('Error getting sessions:', error);
       throw error;
     }
   }
 
-  async deleteSession(sessionId: string): Promise<void> {
+  public async deleteSession(sessionId: string): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
     try {
       await this.db.runAsync('DELETE FROM sessions WHERE id = ?', [sessionId]);
     } catch (error) {
-      console.error('Delete session error:', error);
+      console.error('Error deleting session:', error);
       throw error;
     }
   }
 
-  async saveSetting(key: string, value: any, encrypt: boolean = false): Promise<void> {
+  public async saveSetting(key: string, value: any): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
     try {
-      const valueToStore = encrypt 
-        ? await this.encryptData(JSON.stringify(value))
-        : JSON.stringify(value);
-
+      const encryptedValue = await this.encrypt(JSON.stringify(value));
       await this.db.runAsync(
-        'INSERT OR REPLACE INTO settings (key, value, encrypted) VALUES (?, ?, ?)',
-        [key, valueToStore, encrypt ? 1 : 0]
+        'INSERT OR REPLACE INTO settings (key, value_encrypted) VALUES (?, ?)',
+        [key, encryptedValue]
       );
     } catch (error) {
-      console.error('Save setting error:', error);
+      console.error('Error saving setting:', error);
       throw error;
     }
   }
 
-  async getSetting(key: string): Promise<any> {
+  public async getSetting(key: string): Promise<any> {
     if (!this.db) throw new Error('Database not initialized');
 
     try {
       const result = await this.db.getFirstAsync(
-        'SELECT value, encrypted FROM settings WHERE key = ?',
+        'SELECT value_encrypted FROM settings WHERE key = ?',
         [key]
       );
 
-      if (!result) return null;
-
-      const { value, encrypted } = result as any;
-      return encrypted 
-        ? JSON.parse(await this.decryptData(value))
-        : JSON.parse(value);
+      if (result) {
+        const decryptedValue = await this.decrypt((result as any).value_encrypted);
+        return JSON.parse(decryptedValue);
+      }
+      return null;
     } catch (error) {
-      console.error('Get setting error:', error);
+      console.error('Error getting setting:', error);
       throw error;
     }
   }
 
-  private async encryptData(data: string): Promise<string> {
-    try {
-      // Use a simple encryption for demo - in production, use more secure methods
-      const hash = await Crypto.digestStringAsync(
-        Crypto.CryptoDigestAlgorithm.SHA256,
-        data + 'interview_coach_salt'
-      );
-      return hash;
-    } catch (error) {
-      console.error('Encryption error:', error);
-      throw error;
-    }
-  }
-
-  private async decryptData(encryptedData: string): Promise<string> {
-    // For demo purposes - in production, implement proper decryption
-    // This is a simplified version
-    return encryptedData;
-  }
-
-  async close(): Promise<void> {
+  public async close(): Promise<void> {
     if (this.db) {
       await this.db.closeAsync();
       this.db = null;
     }
   }
 }
+
+export default Database;

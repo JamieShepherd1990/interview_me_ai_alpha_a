@@ -3,6 +3,7 @@
     "name": "Interview Coach",
     "slug": "interview-coach",
     "version": "1.0.0",
+    "sdkVersion": "53.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -17,9 +18,8 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.interviewcoach.app",
-      "infoPlist": {
-        "NSMicrophoneUsageDescription": "This app needs access to your microphone to conduct voice-based interviews.",
-        "NSSpeechRecognitionUsageDescription": "This app uses speech recognition to transcribe your interview responses."
+      "config": {
+        "usesNonExemptEncryption": false
       }
     },
     "android": {
@@ -31,20 +31,27 @@
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.INTERNET",
-        "android.permission.ACCESS_NETWORK_STATE"
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-sqlite",
+      "expo-dev-client",
       [
         "expo-av",
         {
-          "microphonePermission": "Allow Interview Coach to access your microphone for voice-based interviews."
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone for voice interviews."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "b232ee48-e40e-48c8-b57b-51dcb981a541"
+      }
+    },
+    "owner": "jamieshepherd90"
   }
 }

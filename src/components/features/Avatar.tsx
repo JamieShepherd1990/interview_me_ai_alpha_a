@@ -1,75 +1,91 @@
-import React, { useEffect, useRef } from 'react';
-import { View } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { View, StyleSheet } from 'react-native';
 import LottieView from 'lottie-react-native';
 import { VisemeEvent } from '../../lib/schemas';
 
 interface AvatarProps {
   state: 'idle' | 'speaking' | 'listening' | 'thinking';
-  visemeStream: VisemeEvent[];
+  visemeStream?: VisemeEvent[];
 }
 
-export default function Avatar({ state, visemeStream }: AvatarProps) {
-  const lottieRef = useRef<LottieView>(null);
+export default function Avatar({ state, visemeStream = [] }: AvatarProps) {
+  const animationRef = useRef<LottieView>(null);
 
   useEffect(() => {
-    // Handle different avatar states
-    switch (state) {
-      case 'idle':
-        lottieRef.current?.play(0, 30); // Idle animation
-        break;
-      case 'speaking':
-        lottieRef.current?.play(30, 60); // Speaking animation
-        break;
-      case 'listening':
-        lottieRef.current?.play(60, 90); // Listening animation
-        break;
-      case 'thinking':
-        lottieRef.current?.play(90, 120); // Thinking animation
-        break;
+    if (animationRef.current) {
+      switch (state) {
+        case 'idle':
+          animationRef.current.play(0, 30); // Play idle animation
+          break;
+        case 'speaking':
+          animationRef.current.play(30, 60); // Play speaking animation
+          break;
+        case 'listening':
+          animationRef.current.play(60, 90); // Play listening animation
+          break;
+        case 'thinking':
+          animationRef.current.play(90, 120); // Play thinking animation
+          break;
+      }
     }
   }, [state]);
 
+  // Handle viseme events for lip-sync
   useEffect(() => {
-    // Handle viseme events for lip-sync
-    if (visemeStream.length > 0 && state === 'speaking') {
+    if (visemeStream.length > 0 && animationRef.current) {
       const latestViseme = visemeStream[visemeStream.length - 1];
-      // Map viseme to Lottie frame/marker
-      const frame = mapVisemeToFrame(latestViseme.viseme);
-      lottieRef.current?.play(frame, frame + 5);
+      // Map viseme to specific animation frame for lip-sync
+      const frame = mapVisemeToFrame(latestViseme.phoneme);
+      animationRef.current.play(frame, frame + 5);
     }
-  }, [visemeStream, state]);
+  }, [visemeStream]);
 
-  const mapVisemeToFrame = (viseme: string): number => {
-    // Map ElevenLabs visemes to Lottie animation frames
-    const visemeMap: { [key: string]: number } = {
-      'sil': 0,    // Silence
-      'PP': 10,    // P, B, M
-      'FF': 20,    // F, V
-      'TH': 30,    // Th
-      'DD': 40,    // D, T, N
-      'kk': 50,    // K, G
-      'CH': 60,    // Ch, J
-      'SS': 70,    // S, Z
-      'nn': 80,    // N, L
-      'RR': 90,    // R
-      'aa': 100,   // A
-      'E': 110,    // E
-      'I': 120,    // I
-      'O': 130,    // O
-      'U': 140,    // U
+  const mapVisemeToFrame = (phoneme: string): number => {
+    // Map phonemes to animation frames for lip-sync
+    const phonemeMap: { [key: string]: number } = {
+      'sil': 0,
+      'ah': 10,
+      'eh': 15,
+      'oh': 20,
+      'oo': 25,
+      'ee': 30,
+      'mm': 35,
+      'ff': 40,
+      'ss': 45,
+      'th': 50,
     };
-    return visemeMap[viseme] || 0;
+    return phonemeMap[phoneme] || 0;
+  };
+
+  const getAnimationSource = () => {
+    // For now, we'll use a placeholder
+    // In a real implementation, you'd have different Lottie files for each state
+    return require('../../assets/animations/avatar-idle.json');
   };
 
   return (
-    <View className="w-48 h-48 items-center justify-center">
+    <View style={styles.container}>
       <LottieView
-        ref={lottieRef}
-        source={require('../../assets/lottie/avatar.json')} // You'll need to add this Lottie file
-        style={{ width: 192, height: 192 }}
-        loop={false}
+        ref={animationRef}
+        source={getAnimationSource()}
+        style={styles.animation}
+        loop={state === 'idle'}
         autoPlay={false}
+        resizeMode="contain"
       />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    width: 200,
+    height: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  animation: {
+    width: '100%',
+    height: '100%',
+  },
+});

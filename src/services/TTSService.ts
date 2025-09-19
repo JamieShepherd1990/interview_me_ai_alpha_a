@@ -1,126 +1,140 @@
+import { Audio } from 'expo-av';
 import { VisemeEvent } from '../lib/schemas';
 
-export class TTSService {
+class TTSService {
   private static instance: TTSService;
-  private websocket: WebSocket | null = null;
-  private audioContext: AudioContext | null = null;
-  private audioQueue: ArrayBuffer[] = [];
+  private currentSound: Audio.Sound | null = null;
   private isPlaying = false;
-  private visemeCallback: ((viseme: VisemeEvent) => void) | null = null;
+  private visemeCallback: ((visemes: VisemeEvent[]) => void) | null = null;
 
-  private constructor() {}
+  private constructor() {
+    this.setupAudio();
+  }
 
-  static getInstance(): TTSService {
+  public static getInstance(): TTSService {
     if (!TTSService.instance) {
       TTSService.instance = new TTSService();
     }
     return TTSService.instance;
   }
 
-  setVisemeCallback(callback: (viseme: VisemeEvent) => void) {
+  private async setupAudio() {
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        staysActiveInBackground: false,
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+      });
+    } catch (error) {
+      console.error('Error setting up audio:', error);
+    }
+  }
+
+  public setVisemeCallback(callback: (visemes: VisemeEvent[]) => void) {
     this.visemeCallback = callback;
   }
 
-  async initialize(): Promise<boolean> {
+  public async playAudio(audioUrl: string, visemes: VisemeEvent[] = []): Promise<boolean> {
     try {
-      // Initialize Web Audio API
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      return true;
-    } catch (error) {
-      console.error('TTS Initialization Error:', error);
-      return false;
-    }
-  }
+      // Stop any currently playing audio
+      await this.stopAudio();
 
-  async speak(text: string, voiceId: string = 'pNInz6obpgDQGcFmaJgB'): Promise<boolean> {
-    try {
-      // Stop any current playback
-      await this.stop();
-      
-      // Call backend TTS API
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/tts`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text,
-          voice_id: voiceId,
-          model_id: 'eleven_monolingual_v1',
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.8,
-            style: 0.0,
-            use_speaker_boost: true
-          }
-        }),
+      // Create new sound object
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: audioUrl },
+        { shouldPlay: true }
+      );
+
+      this.currentSound = sound;
+      this.isPlaying = true;
+
+      // Set up playback status update listener
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          this.isPlaying = false;
+        }
       });
 
-      if (!response.ok) {
-        throw new Error(`TTS API Error: ${response.status}`);
+      // Emit viseme events for lip-sync
+      if (this.visemeCallback && visemes.length > 0) {
+        this.emitVisemeEvents(visemes);
       }
 
-      const audioBlob = await response.blob();
-      const audioBuffer = await audioBlob.arrayBuffer();
-      
-      return this.playAudio(audioBuffer);
-    } catch (error) {
-      console.error('TTS Speak Error:', error);
-      return false;
-    }
-  }
-
-  private async playAudio(audioBuffer: ArrayBuffer): Promise<boolean> {
-    try {
-      if (!this.audioContext) {
-        throw new Error('Audio context not initialized');
-      }
-
-      const audioData = await this.audioContext.decodeAudioData(audioBuffer.slice(0));
-      const source = this.audioContext.createBufferSource();
-      source.buffer = audioData;
-      source.connect(this.audioContext.destination);
-      
-      this.isPlaying = true;
-      
-      source.onended = () => {
-        this.isPlaying = false;
-      };
-
-      source.start(0);
       return true;
     } catch (error) {
-      console.error('Audio Playback Error:', error);
+      console.error('Error playing audio:', error);
       this.isPlaying = false;
       return false;
     }
   }
 
-  async stop(): Promise<void> {
+  public async stopAudio(): Promise<boolean> {
     try {
-      if (this.audioContext && this.audioContext.state !== 'closed') {
-        await this.audioContext.suspend();
-        await this.audioContext.resume();
+      if (this.currentSound) {
+        await this.currentSound.unloadAsync();
+        this.currentSound = null;
       }
       this.isPlaying = false;
+      return true;
     } catch (error) {
-      console.error('TTS Stop Error:', error);
+      console.error('Error stopping audio:', error);
+      return false;
     }
   }
 
-  isCurrentlyPlaying(): boolean {
+  public async pauseAudio(): Promise<boolean> {
+    try {
+      if (this.currentSound && this.isPlaying) {
+        await this.currentSound.pauseAsync();
+        this.isPlaying = false;
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error pausing audio:', error);
+      return false;
+    }
+  }
+
+  public async resumeAudio(): Promise<boolean> {
+    try {
+      if (this.currentSound && !this.isPlaying) {
+        await this.currentSound.playAsync();
+        this.isPlaying = true;
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error resuming audio:', error);
+      return false;
+    }
+  }
+
+  private emitVisemeEvents(visemes: VisemeEvent[]) {
+    if (!this.visemeCallback) return;
+
+    visemes.forEach((viseme, index) => {
+      setTimeout(() => {
+        if (this.visemeCallback) {
+          this.visemeCallback([viseme]);
+        }
+      }, viseme.timestamp * 1000);
+    });
+  }
+
+  public isCurrentlyPlaying(): boolean {
     return this.isPlaying;
   }
 
-  async destroy(): Promise<void> {
+  public async destroy(): Promise<void> {
     try {
-      await this.stop();
-      if (this.audioContext) {
-        await this.audioContext.close();
-        this.audioContext = null;
-      }
+      await this.stopAudio();
     } catch (error) {
-      console.error('TTS Destroy Error:', error);
+      console.error('Error destroying TTS service:', error);
     }
   }
 }
+
+export default TTSService;

@@ -1,49 +1,33 @@
-import { NavigatorScreenParams } from '@react-navigation/native';
+export type RootStackParamList = {
+  Main: undefined;
+  InterviewFlow: {
+    screen: 'RoleSelection';
+    params?: { interviewType?: string };
+  };
+};
 
-// Bottom Tab Navigator Types
-export type TabParamList = {
+export type MainTabParamList = {
   Home: undefined;
   History: undefined;
 };
 
-// Stack Navigator Types (Modal)
 export type InterviewStackParamList = {
-  RoleSelection: undefined;
-  Interview: {
-    sessionId: string;
-    interviewType: string;
-    role: string;
-  };
-  Feedback: {
-    sessionId: string;
-  };
+  RoleSelection: { interviewType?: string };
+  Interview: { sessionId?: string };
+  Feedback: { sessionId: string };
 };
 
-// Root Navigator Types
-export type RootStackParamList = {
-  // Main app with tabs
-  MainTabs: NavigatorScreenParams<TabParamList>;
-  
-  // Modal stack for interview flow
-  InterviewFlow: NavigatorScreenParams<InterviewStackParamList>;
-  
-  // Onboarding flow
-  Onboarding: undefined;
-  
-  // Auth flow
-  Auth: undefined;
-  
-  // Settings
-  Settings: undefined;
-  
-  // Session detail (from history)
-  SessionDetail: {
-    sessionId: string;
-  };
+export type RootStackScreenProps<T extends keyof RootStackParamList> = {
+  navigation: any;
+  route: { params: RootStackParamList[T] };
 };
 
-declare global {
-  namespace ReactNavigation {
-    interface RootParamList extends RootStackParamList {}
-  }
-}
+export type MainTabScreenProps<T extends keyof MainTabParamList> = {
+  navigation: any;
+  route: { params: MainTabParamList[T] };
+};
+
+export type InterviewStackScreenProps<T extends keyof InterviewStackParamList> = {
+  navigation: any;
+  route: { params: InterviewStackParamList[T] };
+};

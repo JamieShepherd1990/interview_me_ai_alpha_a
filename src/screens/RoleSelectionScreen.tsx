@@ -1,136 +1,198 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useColorScheme } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 
-import { INTERVIEW_TEMPLATES } from '../lib/prompts';
+const roles = [
+  { id: '1', title: 'Software Engineer', description: 'Junior Software Engineer position' },
+  { id: '2', title: 'Data Analyst', description: 'Data Analyst position' },
+  { id: '3', title: 'Product Manager', description: 'Product Manager position' },
+  { id: '4', title: 'Marketing Specialist', description: 'Marketing Specialist position' },
+  { id: '5', title: 'UX Designer', description: 'UX Designer position' },
+  { id: '6', title: 'Sales Representative', description: 'Sales Representative position' },
+];
 
 export default function RoleSelectionScreen() {
   const navigation = useNavigation();
-  const { colorScheme } = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [selectedRole, setSelectedRole] = useState<string | null>(null);
 
-  const handleStartInterview = async () => {
-    if (!selectedTemplate) {
-      Alert.alert('Selection Required', 'Please select an interview type to continue.');
-      return;
-    }
-
-    try {
-      const template = INTERVIEW_TEMPLATES.find(t => t.id === selectedTemplate);
-      if (!template) return;
-
-      const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      
-      navigation.navigate('InterviewFlow', {
-        screen: 'Interview',
-        params: {
-          sessionId,
-          interviewType: template.category,
-          role: template.title.split(' ')[template.title.split(' ').length - 1] // Extract role from title
-        }
-      });
-    } catch (error) {
-      console.error('Start interview error:', error);
-      Alert.alert('Error', 'Failed to start interview session');
-    }
+  const handleRoleSelect = (role: string) => {
+    setSelectedRole(role);
   };
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'entry': return isDark ? 'bg-green-900' : 'bg-green-100';
-      case 'mid': return isDark ? 'bg-yellow-900' : 'bg-yellow-100';
-      case 'senior': return isDark ? 'bg-red-900' : 'bg-red-100';
-      default: return isDark ? 'bg-slate-800' : 'bg-slate-100';
-    }
-  };
-
-  const getDifficultyTextColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'entry': return isDark ? 'text-green-300' : 'text-green-700';
-      case 'mid': return isDark ? 'text-yellow-300' : 'text-yellow-700';
-      case 'senior': return isDark ? 'text-red-300' : 'text-red-700';
-      default: return isDark ? 'text-slate-300' : 'text-slate-700';
+  const handleStartInterview = () => {
+    if (selectedRole) {
+      navigation.navigate('Interview' as never, { 
+        interviewType: selectedRole 
+      } as never);
     }
   };
 
   return (
-    <ScrollView className={`flex-1 ${isDark ? 'bg-slate-900' : 'bg-white'}`}>
-      {/* Header */}
-      <View className={`px-6 py-6 ${isDark ? 'bg-slate-800' : 'bg-blue-50'}`}>
-        <Text className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'} mb-2`}>
-          Choose Your Interview
-        </Text>
-        <Text className={`text-base ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-          Select the type of interview you'd like to practice
-        </Text>
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Select Your Role</Text>
+        <Text style={styles.subtitle}>Choose the position you're preparing for</Text>
       </View>
 
-      {/* Interview Templates */}
-      <View className="px-6 py-4">
-        {INTERVIEW_TEMPLATES.map((template) => (
+      <View style={styles.rolesList}>
+        {roles.map((role) => (
           <TouchableOpacity
-            key={template.id}
-            onPress={() => setSelectedTemplate(template.id)}
-            className={`p-4 rounded-lg mb-3 border-2 ${
-              selectedTemplate === template.id
-                ? (isDark ? 'border-blue-500 bg-blue-900' : 'border-blue-500 bg-blue-50')
-                : (isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-white')
-            }`}
+            key={role.id}
+            style={[
+              styles.roleCard,
+              selectedRole === role.title && styles.selectedRoleCard
+            ]}
+            onPress={() => handleRoleSelect(role.title)}
           >
-            <View className="flex-row items-start justify-between">
-              <View className="flex-1">
-                <Text className={`font-semibold text-lg ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  {template.title}
-                </Text>
-                <Text className={`text-sm mt-1 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                  {template.description}
-                </Text>
-                
-                <View className="flex-row items-center mt-3">
-                  <View className={`px-2 py-1 rounded ${getDifficultyColor(template.difficulty)}`}>
-                    <Text className={`text-xs font-medium ${getDifficultyTextColor(template.difficulty)}`}>
-                      {template.difficulty.toUpperCase()}
-                    </Text>
-                  </View>
-                  <Text className={`ml-3 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    {template.estimatedDuration} minutes
-                  </Text>
-                </View>
-              </View>
-              
-              {selectedTemplate === template.id && (
-                <Ionicons name="checkmark-circle" size={24} color={isDark ? '#3b82f6' : '#2563eb'} />
-              )}
+            <View style={styles.roleContent}>
+              <Text style={[
+                styles.roleTitle,
+                selectedRole === role.title && styles.selectedRoleTitle
+              ]}>
+                {role.title}
+              </Text>
+              <Text style={[
+                styles.roleDescription,
+                selectedRole === role.title && styles.selectedRoleDescription
+              ]}>
+                {role.description}
+              </Text>
             </View>
+            {selectedRole === role.title && (
+              <View style={styles.checkmark}>
+                <Text style={styles.checkmarkText}>✓</Text>
+              </View>
+            )}
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* Start Button */}
-      <View className="px-6 py-6">
+      <View style={styles.buttonContainer}>
         <TouchableOpacity
+          style={[
+            styles.startButton,
+            !selectedRole && styles.disabledButton
+          ]}
           onPress={handleStartInterview}
-          disabled={!selectedTemplate}
-          className={`py-4 px-6 rounded-xl ${
-            selectedTemplate
-              ? (isDark ? 'bg-blue-600' : 'bg-blue-500')
-              : (isDark ? 'bg-slate-600' : 'bg-slate-300')
-          } shadow-lg`}
+          disabled={!selectedRole}
         >
-          <View className="flex-row items-center justify-center">
-            <Ionicons name="play" size={24} color="white" />
-            <Text className="text-white text-lg font-semibold ml-2">
-              Start Interview
-            </Text>
-          </View>
+          <Text style={[
+            styles.buttonText,
+            !selectedRole && styles.disabledButtonText
+          ]}>
+            Start Interview
+          </Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  header: {
+    padding: 20,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  rolesList: {
+    padding: 20,
+  },
+  roleCard: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 12,
+    marginBottom: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  selectedRoleCard: {
+    backgroundColor: '#007AFF',
+    borderWidth: 2,
+    borderColor: '#0056CC',
+  },
+  roleContent: {
+    flex: 1,
+  },
+  roleTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  selectedRoleTitle: {
+    color: 'white',
+  },
+  roleDescription: {
+    fontSize: 14,
+    color: '#666',
+  },
+  selectedRoleDescription: {
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  checkmark: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'white',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkmarkText: {
+    fontSize: 18,
+    color: '#007AFF',
+    fontWeight: 'bold',
+  },
+  buttonContainer: {
+    padding: 20,
+  },
+  startButton: {
+    backgroundColor: '#007AFF',
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#007AFF',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  disabledButton: {
+    backgroundColor: '#ccc',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  disabledButtonText: {
+    color: '#999',
+  },
+});

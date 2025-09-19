@@ -1,91 +1,194 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useColorScheme } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store';
 
-import { INTERVIEW_TEMPLATES } from '../lib/prompts';
+const interviewTemplates = [
+  { id: '1', title: 'Software Engineer', role: 'Junior Software Engineer', duration: '15 min' },
+  { id: '2', title: 'Data Analyst', role: 'Data Analyst', duration: '15 min' },
+  { id: '3', title: 'Product Manager', role: 'Product Manager', duration: '20 min' },
+  { id: '4', title: 'Marketing Specialist', role: 'Marketing Specialist', duration: '15 min' },
+];
 
 export default function HomeScreen() {
   const navigation = useNavigation();
-  const { colorScheme } = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const recentSessions = useSelector((state: RootState) => state.history.sessions.slice(0, 3));
 
-  const handleStartInterview = () => {
-    navigation.navigate('InterviewFlow', { screen: 'RoleSelection' });
+  const handleStartInterview = (type: string) => {
+    // Navigate to interview screen with selected type
+    navigation.navigate('Interview' as never, { interviewType: type } as never);
   };
 
   return (
-    <ScrollView className={`flex-1 ${isDark ? 'bg-slate-900' : 'bg-white'}`}>
-      {/* Header */}
-      <View className={`px-6 py-8 ${isDark ? 'bg-slate-800' : 'bg-blue-50'}`}>
-        <Text className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-slate-900'} mb-2`}>
-          Welcome to Interview Coach
-        </Text>
-        <Text className={`text-lg ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-          Practice your interview skills with AI-powered coaching
-        </Text>
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Welcome to InterviewCoach</Text>
+        <Text style={styles.subtitle}>Practice with AI-powered mock interviews</Text>
       </View>
 
-      {/* Start Interview Button */}
-      <View className="px-6 py-6">
-        <TouchableOpacity
-          onPress={handleStartInterview}
-          className={`py-4 px-6 rounded-xl ${
-            isDark ? 'bg-blue-600' : 'bg-blue-500'
-          } shadow-lg`}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Start New Interview</Text>
+        <TouchableOpacity 
+          style={styles.primaryButton}
+          onPress={() => navigation.navigate('InterviewFlow' as never, { screen: 'RoleSelection' } as never)}
         >
-          <View className="flex-row items-center justify-center">
-            <Ionicons name="mic" size={24} color="white" />
-            <Text className="text-white text-lg font-semibold ml-2">
-              Start New Interview
-            </Text>
-          </View>
+          <Text style={styles.buttonText}>Choose Your Role</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Interview Templates */}
-      <View className="px-6 py-4">
-        <Text className={`text-xl font-semibold mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-          Interview Templates
-        </Text>
-        {INTERVIEW_TEMPLATES.map((template) => (
-          <TouchableOpacity
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Interview Templates</Text>
+        {interviewTemplates.map((template) => (
+          <TouchableOpacity 
             key={template.id}
-            onPress={() => navigation.navigate('InterviewFlow', { 
-              screen: 'RoleSelection',
-              params: { templateId: template.id }
-            })}
-            className={`p-4 rounded-lg mb-3 ${
-              isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'
-            } border`}
+            style={styles.templateCard}
+            onPress={() => handleStartInterview(template.role)}
           >
-            <Text className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              {template.title}
-            </Text>
-            <Text className={`text-sm mt-1 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-              {template.description}
-            </Text>
-            <View className="flex-row items-center mt-2">
-              <Text className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                {template.estimatedDuration} min • {template.difficulty}
-              </Text>
+            <View style={styles.templateContent}>
+              <Text style={styles.templateTitle}>{template.title}</Text>
+              <Text style={styles.templateRole}>{template.role}</Text>
+              <Text style={styles.templateDuration}>{template.duration}</Text>
             </View>
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* Recent Sessions */}
-      <View className="px-6 py-4">
-        <Text className={`text-xl font-semibold mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-          Recent Sessions
-        </Text>
-        <View className={`p-4 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
-          <Text className={`text-center ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-            No recent sessions yet. Start your first interview!
-          </Text>
+      {recentSessions.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Recent Sessions</Text>
+          {recentSessions.map((session) => (
+            <TouchableOpacity 
+              key={session.id}
+              style={styles.sessionCard}
+              onPress={() => navigation.navigate('Interview' as never, { sessionId: session.id } as never)}
+            >
+              <View style={styles.sessionContent}>
+                <Text style={styles.sessionTitle}>{session.title}</Text>
+                <Text style={styles.sessionScore}>Score: {session.score}/10</Text>
+                <Text style={styles.sessionDate}>
+                  {new Date(session.createdAt).toLocaleDateString()}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))}
         </View>
-      </View>
+      )}
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  header: {
+    padding: 20,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  section: {
+    padding: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    color: '#333',
+  },
+  primaryButton: {
+    backgroundColor: '#007AFF',
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#007AFF',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  templateCard: {
+    backgroundColor: 'white',
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  templateContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  templateTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  templateRole: {
+    fontSize: 14,
+    color: '#666',
+  },
+  templateDuration: {
+    fontSize: 12,
+    color: '#999',
+  },
+  sessionCard: {
+    backgroundColor: 'white',
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  sessionContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  sessionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  sessionScore: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: 'bold',
+  },
+  sessionDate: {
+    fontSize: 12,
+    color: '#999',
+  },
+});
