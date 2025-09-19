@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Interview Coach",
+    "slug": "interview-coach",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.interviewcoach.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "This app needs access to your microphone to conduct voice-based interviews.",
+        "NSSpeechRecognitionUsageDescription": "This app uses speech recognition to transcribe your interview responses."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.interviewcoach.app",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-sqlite",
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow Interview Coach to access your microphone for voice-based interviews."
+        }
+      ]
+    ]
+  }
+}
