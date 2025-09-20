@@ -42,7 +42,7 @@ xcodebuild \
     -workspace InterviewCoachAI.xcworkspace \
     -scheme InterviewCoachAI \
     -configuration Release \
-    -destination "generic/platform=iOS" \
+    -sdk iphoneos \
     -archivePath "InterviewCoachAI.xcarchive" \
     archive
 
