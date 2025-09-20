@@ -46,12 +46,8 @@ class STTService {
   }
 
   private initializeVoice() {
-    Voice.onSpeechStart = this.onSpeechStart.bind(this);
-    Voice.onSpeechEnd = this.onSpeechEnd.bind(this);
-    Voice.onSpeechResults = this.onSpeechResults.bind(this);
-    Voice.onSpeechPartialResults = this.onSpeechPartialResults.bind(this);
-    Voice.onSpeechError = this.onSpeechError.bind(this);
-    Voice.onSpeechVolumeChanged = this.onSpeechVolumeChanged.bind(this);
+    // Voice event handlers disabled - using text input fallback
+    console.log('Voice recognition disabled - using text input fallback');
   }
 
   public setDispatch(dispatch: AppDispatch) {
@@ -74,12 +70,8 @@ class STTService {
       this.lastPartialResult = '';
 
       // Start voice recognition with optimized settings
-      await Voice.start('en-US', {
-        EXTRA_PARTIAL_RESULTS: true,
-        EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS: 1000,
-        EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS: 1000,
-        EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS: 1000,
-      });
+      // Voice.start disabled - using text input fallback
+      console.log('Voice recognition disabled - using text input fallback');
 
       this.isListening = true;
       this.dispatch?.(setListening(true));
@@ -100,7 +92,8 @@ class STTService {
 
   public async stopListening(): Promise<boolean> {
     try {
-      await Voice.stop();
+      // Voice.stop disabled - using text input fallback
+      console.log('Voice recognition disabled - using text input fallback');
       this.isListening = false;
       this.dispatch?.(setListening(false));
       
@@ -279,7 +272,8 @@ class STTService {
   public async destroy(): Promise<void> {
     try {
       await this.stopListening();
-      await Voice.destroy();
+      // Voice.destroy disabled - using text input fallback
+      console.log('Voice recognition disabled - using text input fallback');
       this.clearTimers();
     } catch (error) {
       console.error('Error destroying STT service:', error);

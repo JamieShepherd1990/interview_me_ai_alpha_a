@@ -35,7 +35,7 @@ export default function HistoryScreen() {
     try {
       const db = Database.getInstance();
       await db.initialize();
-      const allSessions = await db.getAllSessions();
+      const allSessions = await db.getSessions();
       dispatch(setSessions(allSessions));
     } catch (error) {
       console.error('Error loading sessions:', error);

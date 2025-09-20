@@ -26,16 +26,13 @@ export default function InterviewScreen() {
     requestPermissions();
     
     return () => {
-      Voice.destroy().then(Voice.removeAllListeners);
+      // Cleanup - no Voice to destroy
     };
   }, []);
 
   const initializeVoice = () => {
-    Voice.onSpeechStart = onSpeechStart;
-    Voice.onSpeechEnd = onSpeechEnd;
-    Voice.onSpeechResults = onSpeechResults;
-    Voice.onSpeechPartialResults = onSpeechPartialResults;
-    Voice.onSpeechError = onSpeechError;
+    // Voice recognition is disabled - using text input fallback
+    console.log('Voice recognition disabled - using text input fallback');
   };
 
   const requestPermissions = async () => {
@@ -65,7 +62,7 @@ export default function InterviewScreen() {
     dispatch(setListening(false));
   };
 
-  const onSpeechResults = (event: SpeechResultsEvent) => {
+  const onSpeechResults = (event: any) => {
     const spokenText = event.value?.[0] || '';
     console.log('Speech results:', spokenText);
     
@@ -82,12 +79,12 @@ export default function InterviewScreen() {
     }
   };
 
-  const onSpeechPartialResults = (event: SpeechResultsEvent) => {
+  const onSpeechPartialResults = (event: any) => {
     const partialText = event.value?.[0] || '';
     dispatch(updateTranscript(partialText));
   };
 
-  const onSpeechError = (event: SpeechErrorEvent) => {
+  const onSpeechError = (event: any) => {
     console.error('Speech error:', event.error);
     setIsRecording(false);
     dispatch(setListening(false));
@@ -162,7 +159,8 @@ export default function InterviewScreen() {
         return;
       }
       
-      await Voice.start('en-US');
+      // Voice.start disabled - using text input fallback
+      console.log('Voice recognition disabled - using text input fallback');
     } catch (error) {
       console.error('Error starting voice recognition:', error);
     }
@@ -170,7 +168,8 @@ export default function InterviewScreen() {
 
   const stopVoiceRecognition = async () => {
     try {
-      await Voice.stop();
+      // Voice.stop disabled - using text input fallback
+      console.log('Voice recognition disabled - using text input fallback');
     } catch (error) {
       console.error('Error stopping voice recognition:', error);
     }

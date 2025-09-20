@@ -35,13 +35,11 @@ class VoiceService {
     try {
       // const Voice = await import('@react-native-voice/voice');
       
-      Voice.default.onSpeechStart = this.onSpeechStart?.bind(this);
-      Voice.default.onSpeechEnd = this.onSpeechEnd?.bind(this);
-      Voice.default.onSpeechResults = this.onSpeechResults?.bind(this);
-      Voice.default.onSpeechPartialResults = this.onSpeechPartialResults?.bind(this);
-      Voice.default.onSpeechError = this.onSpeechError?.bind(this);
+      // Voice event handlers disabled - using text input fallback
+      console.log('Voice recognition disabled - using text input fallback');
 
-      await Voice.default.start('en-US');
+      // Voice.start disabled - using text input fallback
+      console.log('Voice recognition disabled - using text input fallback');
       this.isListening = true;
       return true;
     } catch (error) {
@@ -59,7 +57,8 @@ class VoiceService {
 
     try {
       // const Voice = await import('@react-native-voice/voice');
-      await Voice.default.stop();
+      // Voice.stop disabled - using text input fallback
+      console.log('Voice recognition disabled - using text input fallback');
       this.isListening = false;
       return true;
     } catch (error) {
@@ -87,7 +86,8 @@ class VoiceService {
 
     try {
       // const Voice = await import('@react-native-voice/voice');
-      await Voice.default.destroy();
+      // Voice.destroy disabled - using text input fallback
+      console.log('Voice recognition disabled - using text input fallback');
     } catch (error) {
       console.error('[VoiceService] Error destroying voice service:', error);
     }

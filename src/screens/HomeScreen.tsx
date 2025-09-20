@@ -67,7 +67,7 @@ export default function HomeScreen() {
     try {
       const db = Database.getInstance();
       await db.initialize();
-      const sessions = await db.getAllSessions();
+      const sessions = await db.getSessions();
       dispatch(setSessions(sessions));
     } catch (error) {
       console.error('Error loading recent sessions:', error);
