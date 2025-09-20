@@ -25,9 +25,9 @@
     },
         "production": {
           "ios": {
-            "resourceClass": "m-large",
+            "resourceClass": "large",
             "buildConfiguration": "Release",
-            "image": "latest"
+            "image": "macos-ventura-13.6-xcode-15.0"
           },
       "android": {
         "resourceClass": "medium"

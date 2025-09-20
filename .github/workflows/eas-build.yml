@@ -1,0 +1,93 @@
+name: 🚀 EAS Build Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # EAS Build for Development & Testing (iOS 17.5 SDK - Works fine for testing)
+  eas-build:
+    name: 📱 EAS Build (Development)
+    runs-on: ubuntu-latest
+    if: github.ref != 'refs/heads/main' || contains(github.event.head_commit.message, '[dev-build]')
+    
+    steps:
+      - name: 🏗 Setup repo
+        uses: actions/checkout@v4
+
+      - name: 🏗 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.x
+          cache: npm
+
+      - name: 🏗 Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🚀 Build development
+        run: eas build --platform ios --profile development --non-interactive --no-wait
+
+  # Local Build for App Store (iOS 18 SDK - Required for App Store)
+  appstore-build:
+    name: 🍎 App Store Build (iOS 18 SDK)
+    runs-on: macos-14  # Latest macOS with Xcode 16
+    if: github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[appstore]')
+    
+    steps:
+      - name: 🏗 Setup repo
+        uses: actions/checkout@v4
+
+      - name: 🏗 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.x
+          cache: npm
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🔧 Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16.0'
+
+      - name: 📱 Check iOS 18 SDK
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks | grep iOS
+
+      - name: 🚀 Build for App Store
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APP_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
+        run: |
+          chmod +x scripts/build-for-appstore.sh
+          ./scripts/build-for-appstore.sh
+
+      - name: 📦 Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: InterviewCoachAI-AppStore.ipa
+          path: ios/InterviewCoachAI.ipa
+
+  # Notification
+  notify:
+    name: 📢 Notify Build Status
+    runs-on: ubuntu-latest
+    needs: [eas-build, appstore-build]
+    if: always()
+    
+    steps:
+      - name: 📢 Build Complete
+        run: |
+          echo "🎉 Build pipeline completed!"
+          echo "✅ EAS Build: ${{ needs.eas-build.result }}"
+          echo "✅ App Store Build: ${{ needs.appstore-build.result }}"
