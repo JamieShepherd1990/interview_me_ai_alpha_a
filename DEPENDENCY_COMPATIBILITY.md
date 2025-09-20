@@ -53,6 +53,7 @@
 | Setting | Value | Status | Notes |
 |---------|-------|--------|-------|
 | iOS Deployment Target | 13.4 | ✅ STABLE | Minimum for Expo 51 |
+| Xcode Version | 16.0 | ✅ REQUIRED | Apple requires iOS 18 SDK for TestFlight |
 | useFrameworks | static | ✅ STABLE | Required for some pods |
 | newArchEnabled (Android) | false | ✅ STABLE | Disable new arch for stability |
 
