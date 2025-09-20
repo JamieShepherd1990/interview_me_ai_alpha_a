@@ -76,7 +76,7 @@ export default function FeedbackScreen() {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       
       // Navigate back to main app
-      navigation.navigate('Main' as never);
+      navigation.navigate('Main' as any);
 
     } catch (error) {
       console.error('Error saving session:', error);
@@ -104,7 +104,7 @@ export default function FeedbackScreen() {
           onPress: async () => {
             dispatch(resetSession());
             await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            navigation.navigate('Main' as never);
+            navigation.navigate('Main' as any);
           },
         },
       ]

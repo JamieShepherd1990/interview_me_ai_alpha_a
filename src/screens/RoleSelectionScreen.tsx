@@ -21,9 +21,9 @@ export default function RoleSelectionScreen() {
 
   const handleStartInterview = () => {
     if (selectedRole) {
-      navigation.navigate('Interview' as never, { 
+      navigation.navigate('Interview' as any, { 
         interviewType: selectedRole 
-      } as never);
+      } as any);
     }
   };
 

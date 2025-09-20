@@ -207,7 +207,7 @@ export default function InterviewScreen() {
           style: 'destructive',
           onPress: () => {
             dispatch(endSession());
-            navigation.navigate('Feedback' as never, { sessionId: 'temp-id' } as never);
+            navigation.navigate('Feedback' as any, { sessionId: 'temp-id' } as any);
           }
         }
       ]
@@ -293,7 +293,7 @@ export default function InterviewScreen() {
         <TouchableOpacity
           style={[
             styles.voiceButton,
-            session.isListening ? styles.listeningButton : styles.silentButton
+            session.isListening ? styles.listeningButton : styles.recordingButton
           ]}
           onPress={session.isListening ? stopVoiceRecognition : startVoiceRecognition}
         >

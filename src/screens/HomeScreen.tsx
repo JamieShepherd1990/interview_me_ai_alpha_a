@@ -77,13 +77,13 @@ export default function HomeScreen() {
   const handleStartInterview = async (template: typeof interviewTemplates[0]) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
-    navigation.navigate('InterviewFlow' as never, {
+    navigation.navigate('InterviewFlow' as any, {
       screen: 'RoleSelection',
       params: { 
         selectedRole: template.title,
         interviewType: template.id 
       }
-    } as never);
+    } as any);
   };
 
   const handleViewHistory = async () => {

@@ -94,7 +94,7 @@ export default function OnboardingScreen() {
         return;
       }
       // Navigate to main app
-      navigation.navigate('Main' as never);
+      navigation.navigate('Main' as any);
       return;
     }
 
