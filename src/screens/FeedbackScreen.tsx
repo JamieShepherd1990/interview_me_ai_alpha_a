@@ -345,22 +345,19 @@ export default function FeedbackScreen() {
           <FeedbackCard
             title="💪 Strengths"
             items={session.feedback.strengths}
-            color={colors.success}
-            backgroundColor={`${colors.success}15`}
+            type="strengths"
           />
           
           <FeedbackCard
             title="🎯 Areas for Improvement"
             items={session.feedback.improvements}
-            color={colors.warning}
-            backgroundColor={`${colors.warning}15`}
+            type="improvements"
           />
           
           <FeedbackCard
             title="📚 Key Learnings"
             items={session.feedback.learnings}
-            color={colors.primary[600]}
-            backgroundColor={colors.primary[50]}
+            type="learnings"
           />
         </View>
 

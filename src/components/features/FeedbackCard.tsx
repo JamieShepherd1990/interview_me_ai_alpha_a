@@ -51,9 +51,7 @@ export default function FeedbackCard({ title, items, type, className = '' }: Fee
 
   return (
     <View style={[
-      { padding: 16, borderRadius: 8 },
-      styles.container,
-      className
+      { padding: 16, borderRadius: 8 }
     ]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
         <Ionicons 
@@ -61,18 +59,20 @@ export default function FeedbackCard({ title, items, type, className = '' }: Fee
           size={20} 
           color={styles.iconColor} 
         />
-        <Text style={[
-          { marginLeft: 8, fontSize: 18, fontWeight: '600' },
-          styles.text
-        ]}>
+        <Text style={{
+          marginLeft: 8, 
+          fontSize: 18, 
+          fontWeight: '600',
+          color: styles.iconColor
+        }}>
           {title}
         </Text>
       </View>
       
       {items.map((item, index) => (
         <View key={index} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 }}>
-          <Text style={[{ fontSize: 14, marginRight: 8 }, styles.text]}>•</Text>
-          <Text style={[{ flex: 1, fontSize: 14 }, styles.text]}>
+          <Text style={{ fontSize: 14, marginRight: 8, color: styles.iconColor }}>•</Text>
+          <Text style={{ flex: 1, fontSize: 14, color: styles.iconColor }}>
             {item}
           </Text>
         </View>
