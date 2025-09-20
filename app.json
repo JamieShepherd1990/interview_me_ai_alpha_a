@@ -49,18 +49,17 @@
           "microphonePermission": "InterviewCoach AI needs microphone access to conduct voice-based interviews and provide real-time coaching feedback."
         }
       ],
-      [
-        "expo-build-properties",
-        {
-              "ios": {
-                "deploymentTarget": "13.4",
-                "useFrameworks": "static"
-              },
-          "android": {
-            "newArchEnabled": false
+        [
+          "expo-build-properties",
+          {
+            "ios": {
+              "deploymentTarget": "13.0"
+            },
+            "android": {
+              "newArchEnabled": false
+            }
           }
-        }
-      ]
+        ]
     ],
     "extra": {
       "eas": {
