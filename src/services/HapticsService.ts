@@ -1,4 +1,5 @@
 import { hasNativeModuleSupport } from '../utils/platform';
+import * as Haptics from 'expo-haptics';
 
 class HapticsService {
   private static instance: HapticsService;
@@ -17,7 +18,6 @@ class HapticsService {
     }
 
     try {
-      const Haptics = await import('expo-haptics');
       const ImpactFeedbackStyle = Haptics.ImpactFeedbackStyle;
       
       let feedbackStyle;
@@ -48,7 +48,6 @@ class HapticsService {
     }
 
     try {
-      const Haptics = await import('expo-haptics');
       const NotificationFeedbackType = Haptics.NotificationFeedbackType;
       
       let feedbackType;

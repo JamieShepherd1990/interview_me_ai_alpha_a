@@ -140,7 +140,10 @@ export default function InterviewScreen() {
             startVoiceRecognition();
           }, 1000);
         },
-        onError: () => dispatch(setSpeaking(false)),
+        onError: (error: Error) => {
+          console.error('Speech error:', error);
+          dispatch(setSpeaking(false));
+        },
       });
     } catch (error) {
       console.error('Error speaking text:', error);
