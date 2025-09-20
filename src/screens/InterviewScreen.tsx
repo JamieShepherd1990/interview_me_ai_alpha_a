@@ -18,7 +18,7 @@ export default function InterviewScreen() {
   const [isRecording, setIsRecording] = useState(false);
   const [hasPermission, setHasPermission] = useState(false);
   const [currentResponse, setCurrentResponse] = useState('');
-  const [conversationHistory, setConversationHistory] = useState([]);
+  const [conversationHistory, setConversationHistory] = useState<Array<{type: string, text: string, timestamp: number}>>([]);
 
   // Initialize voice recognition
   useEffect(() => {
@@ -443,9 +443,6 @@ const styles = StyleSheet.create({
   recordingButton: {
     backgroundColor: '#FF3B30',
   },
-  silentButton: {
-    backgroundColor: '#34C759',
-  },
   controlButtonText: {
     color: 'white',
     fontSize: 16,
@@ -531,8 +528,5 @@ const styles = StyleSheet.create({
   },
   listeningButton: {
     backgroundColor: '#FF3B30',
-  },
-  silentButton: {
-    backgroundColor: '#34C759',
   },
 });

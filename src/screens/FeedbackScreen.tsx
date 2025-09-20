@@ -51,7 +51,7 @@ export default function FeedbackScreen() {
       const interviewSession = {
         id: `session_${Date.now()}`,
         title: `${session.currentQuestion ? 'Interview' : 'Mock Interview'} - ${new Date().toLocaleDateString()}`,
-        role: route.params?.role || 'General',
+        role: (route.params as any)?.role || 'General',
         startTime: session.startTime || Date.now(),
         duration: session.duration,
         transcript: session.transcript,
@@ -121,7 +121,7 @@ export default function FeedbackScreen() {
       const interviewSession = {
         id: `temp_${Date.now()}`,
         title: `Interview Report - ${new Date().toLocaleDateString()}`,
-        role: route.params?.role || 'General',
+        role: (route.params as any)?.role || 'General',
         startTime: session.startTime || Date.now(),
         duration: session.duration,
         transcript: session.transcript,
