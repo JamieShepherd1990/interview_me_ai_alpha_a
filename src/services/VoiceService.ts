@@ -33,7 +33,7 @@ class VoiceService {
     }
 
     try {
-      const Voice = await import('@react-native-voice/voice');
+      // const Voice = await import('@react-native-voice/voice');
       
       Voice.default.onSpeechStart = this.onSpeechStart?.bind(this);
       Voice.default.onSpeechEnd = this.onSpeechEnd?.bind(this);
@@ -58,7 +58,7 @@ class VoiceService {
     }
 
     try {
-      const Voice = await import('@react-native-voice/voice');
+      // const Voice = await import('@react-native-voice/voice');
       await Voice.default.stop();
       this.isListening = false;
       return true;
@@ -86,7 +86,7 @@ class VoiceService {
     }
 
     try {
-      const Voice = await import('@react-native-voice/voice');
+      // const Voice = await import('@react-native-voice/voice');
       await Voice.default.destroy();
     } catch (error) {
       console.error('[VoiceService] Error destroying voice service:', error);

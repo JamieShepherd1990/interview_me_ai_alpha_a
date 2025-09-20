@@ -8,6 +8,7 @@ export type RootStackParamList = {
       selectedRole?: string;
     };
   };
+};
 
 export type MainTabParamList = {
   Home: undefined;

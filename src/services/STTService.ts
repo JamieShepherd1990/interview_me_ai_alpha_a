@@ -1,9 +1,9 @@
-import Voice, { 
-  SpeechResultsEvent, 
-  SpeechErrorEvent, 
-  SpeechStartEvent,
-  SpeechEndEvent 
-} from '@react-native-voice/voice';
+// import Voice, { 
+//   SpeechResultsEvent, 
+//   SpeechErrorEvent, 
+//   SpeechStartEvent,
+//   SpeechEndEvent 
+// } from '@react-native-voice/voice';
 import * as Haptics from 'expo-haptics';
 import { AppDispatch } from '../store';
 import { updateTranscript, appendTranscript, setListening } from '../store/slices/sessionSlice';
