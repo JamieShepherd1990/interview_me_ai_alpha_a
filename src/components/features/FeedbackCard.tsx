@@ -50,22 +50,29 @@ export default function FeedbackCard({ title, items, type, className = '' }: Fee
   const styles = getTypeStyles();
 
   return (
-    <View className={`p-4 rounded-lg ${styles.container} ${className}`}>
-      <View className="flex-row items-center mb-3">
+    <View style={[
+      { padding: 16, borderRadius: 8 },
+      styles.container,
+      className
+    ]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
         <Ionicons 
           name={styles.icon} 
           size={20} 
           color={styles.iconColor} 
         />
-        <Text className={`ml-2 text-lg font-semibold ${styles.text}`}>
+        <Text style={[
+          { marginLeft: 8, fontSize: 18, fontWeight: '600' },
+          styles.text
+        ]}>
           {title}
         </Text>
       </View>
       
       {items.map((item, index) => (
-        <View key={index} className="flex-row items-start mb-2">
-          <Text className={`text-sm mr-2 ${styles.text}`}>•</Text>
-          <Text className={`flex-1 text-sm ${styles.text}`}>
+        <View key={index} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 }}>
+          <Text style={[{ fontSize: 14, marginRight: 8 }, styles.text]}>•</Text>
+          <Text style={[{ flex: 1, fontSize: 14 }, styles.text]}>
             {item}
           </Text>
         </View>

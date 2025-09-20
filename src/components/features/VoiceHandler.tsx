@@ -48,7 +48,7 @@ export default function VoiceHandler() {
     if (!hasPermission) {
       const granted = await requestMicrophonePermission();
       if (!granted) {
-        alert('Microphone permission is required for voice interviews');
+        Alert.alert('Permission Required', 'Microphone permission is required for voice interviews');
         return;
       }
     }
@@ -60,7 +60,7 @@ export default function VoiceHandler() {
       setIsRecording(true);
       dispatch(setListening(true));
     } else {
-      alert('Failed to start voice recognition');
+      Alert.alert('Error', 'Failed to start voice recognition');
     }
   };
 

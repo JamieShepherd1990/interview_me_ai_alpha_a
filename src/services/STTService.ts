@@ -137,7 +137,7 @@ class STTService {
     }
   }
 
-  private onSpeechStart = (event: SpeechStartEvent) => {
+  private onSpeechStart = (event: any) => {
     console.log('Speech started');
     
     // Detect barge-in: user started speaking while AI is talking
@@ -151,12 +151,12 @@ class STTService {
     this.clearSilenceTimer();
   };
 
-  private onSpeechEnd = (event: SpeechEndEvent) => {
+  private onSpeechEnd = (event: any) => {
     console.log('Speech ended');
     this.startSilenceTimer();
   };
 
-  private onSpeechResults = (event: SpeechResultsEvent) => {
+  private onSpeechResults = (event: any) => {
     const results = event.value || [];
     if (results.length > 0) {
       this.finalTranscript = results[0];
@@ -170,7 +170,7 @@ class STTService {
     }
   };
 
-  private onSpeechPartialResults = (event: SpeechResultsEvent) => {
+  private onSpeechPartialResults = (event: any) => {
     const results = event.value || [];
     if (results.length > 0) {
       this.partialTranscript = results[0];
@@ -185,7 +185,7 @@ class STTService {
     }
   };
 
-  private onSpeechError = (event: SpeechErrorEvent) => {
+  private onSpeechError = (event: any) => {
     console.error('Speech recognition error:', event.error);
     this.isListening = false;
     this.dispatch?.(setListening(false));

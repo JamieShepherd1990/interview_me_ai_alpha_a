@@ -68,9 +68,12 @@ export default function Button({
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled}
-      className={`${getVariantStyles()} ${getSizeStyles()} rounded-lg shadow-lg ${className}`}
+      style={[
+        { borderRadius: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
+        className
+      ]}
     >
-      <View className="flex-row items-center justify-center">
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
         {icon && (
           <Ionicons 
             name={icon} 
@@ -79,7 +82,7 @@ export default function Button({
             style={{ marginRight: 8 }}
           />
         )}
-        <Text className={`${getTextSize()} font-semibold text-white`}>
+        <Text style={{ fontWeight: '600', color: 'white', fontSize: size === 'small' ? 14 : size === 'large' ? 18 : 16 }}>
           {title}
         </Text>
       </View>
