@@ -235,13 +235,13 @@ class STTService {
   private async processStreamingAPI(text: string) {
     try {
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://interview-c3gu77xyq-jamies-projects-c3ccf727.vercel.app';
-      console.log('STREAMING: Calling API:', `${apiUrl}/api/chat`);
+      console.log('STREAMING: Calling API:', `${apiUrl}/api/stream`);
       
       // Pre-initialize TTS service for immediate response
       const ttsService = TTSService.getInstance();
       
       // Make AI request with STREAMING enabled
-      const response = await fetch(`${apiUrl}/api/chat`, {
+      const response = await fetch(`${apiUrl}/api/stream`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -252,7 +252,6 @@ class STTService {
             { role: 'user', content: text }
           ],
           role: 'Software Engineer',
-          stream: true, // Enable streaming!
         }),
       });
 
