@@ -17,6 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.interviewcoach.ai",
+      "buildNumber": "3",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "InterviewCoach AI needs access to your microphone to conduct voice-based interviews and provide real-time feedback.",
         "NSCameraUsageDescription": "InterviewCoach AI may need camera access for future video interview features.",
