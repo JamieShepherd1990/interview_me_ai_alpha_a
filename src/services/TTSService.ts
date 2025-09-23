@@ -164,7 +164,7 @@ class TTSService {
     try {
       console.log('Requesting TTS for text:', text);
 
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://interview-c3gu77xyq-jamies-projects-c3ccf727.vercel.app';
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://interviewme-lilac.vercel.app';
       console.log('Calling TTS API:', `${apiUrl}/api/tts`);
       const response = await fetch(`${apiUrl}/api/tts`, {
         method: 'POST',
@@ -338,7 +338,7 @@ class TTSService {
   private async synthesizeAndPlay(text: string): Promise<void> {
     try {
       // Use regular API for non-streaming requests
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://interview-c3gu77xyq-jamies-projects-c3ccf727.vercel.app';
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://interviewme-lilac.vercel.app';
       console.log('Calling TTS API:', `${apiUrl}/api/tts`);
       const response = await fetch(`${apiUrl}/api/tts`, {
         method: 'POST',

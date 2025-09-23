@@ -240,7 +240,7 @@ class STTService {
 
   private async processStreamingAPI(text: string) {
     try {
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://interview-c3gu77xyq-jamies-projects-c3ccf727.vercel.app';
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://interviewme-lilac.vercel.app';
       console.log('CLIENT-STREAMING: Calling API:', `${apiUrl}/api/chat`);
       
       // Pre-initialize TTS service for immediate response
@@ -307,7 +307,7 @@ class STTService {
 
   private async streamAIResponse(text: string) {
     try {
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://interview-c3gu77xyq-jamies-projects-c3ccf727.vercel.app';
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://interviewme-lilac.vercel.app';
       console.log('Starting streaming AI response:', `${apiUrl}/api/chat-stream`);
       
       const response = await fetch(`${apiUrl}/api/chat-stream`, {

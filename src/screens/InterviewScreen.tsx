@@ -85,7 +85,7 @@ export default function InterviewScreen() {
       dispatch(setSpeaking(true));
       
       // Call backend API for real AI response
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://interview-c3gu77xyq-jamies-projects-c3ccf727.vercel.app';
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://interviewme-lilac.vercel.app';
       console.log('Calling API:', `${apiUrl}/api/chat`);
       const response = await fetch(`${apiUrl}/api/chat`, {
         method: 'POST',
