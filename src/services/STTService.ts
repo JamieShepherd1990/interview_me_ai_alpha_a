@@ -272,28 +272,19 @@ class STTService {
         console.log('CLIENT-STREAMING: Starting TTS streaming...');
         await ttsService.startStreamingTTS();
         
-        // Break response into words for simulated streaming
-        const words = fullResponse.split(' ');
-        let currentText = '';
+        // Update transcript with full response
+        this.dispatch?.(appendTranscript(`\nAI: ${fullResponse}`));
         
-        // Update transcript progressively
-        this.dispatch?.(appendTranscript(`\nAI: `));
-        
-        for (let i = 0; i < words.length; i++) {
-          const word = words[i];
-          currentText += (i > 0 ? ' ' : '') + word;
-          
-          console.log(`CLIENT-STREAMING: Processing word ${i + 1}/${words.length}: "${word}"`);
-          
-          // Stream to TTS in chunks for real-time audio
-          await ttsService.streamTextToTTS(word + (i < words.length - 1 ? ' ' : ''));
-          
-          // Update transcript progressively
-          this.dispatch?.(appendTranscript(word + (i < words.length - 1 ? ' ' : '')));
-          
-          // Very small delay to simulate streaming (50ms for ChatGPT-like speed)
-          await new Promise(resolve => setTimeout(resolve, 50));
+        // Generate visemes for the entire response
+        if (ttsService.visemeCallback) {
+          const visemes = ttsService.generateVisemes(fullResponse);
+          console.log('Generated visemes for full response:', visemes);
+          ttsService.visemeCallback(visemes);
         }
+        
+        // Use the working TTS API for the entire response (single API call)
+        console.log('CLIENT-STREAMING: Playing full response audio...');
+        await ttsService.playAudioFromAPI(fullResponse);
         
         await ttsService.finishStreamingTTS();
         console.log('CLIENT-STREAMING: Completed streaming response');

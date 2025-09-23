@@ -222,24 +222,25 @@ class TTSService {
     try {
       console.log('Streaming text to TTS:', text);
       
-      // Use the working TTS API for each text chunk
-      await this.playAudioFromAPI(text);
-      
-      // Simulate viseme events for lip-sync
+      // Generate viseme events for lip-sync (no API call needed for visemes)
       if (this.visemeCallback) {
-        // Generate basic viseme events for lip-sync
         const visemes = this.generateVisemes(text);
         console.log('Generated visemes for lip-sync:', visemes);
         this.visemeCallback(visemes);
       } else {
         console.log('No viseme callback set');
       }
+      
+      // For now, just simulate the audio without making API calls for every word
+      // This prevents rate limiting and performance issues
+      console.log('Simulating audio playback for:', text);
+      
     } catch (error) {
       console.error('Error streaming text to TTS:', error);
     }
   }
 
-  private generateVisemes(text: string): VisemeEvent[] {
+  public generateVisemes(text: string): VisemeEvent[] {
     // Generate basic viseme events for lip-sync
     const visemes: VisemeEvent[] = [];
     const words = text.split(' ');
