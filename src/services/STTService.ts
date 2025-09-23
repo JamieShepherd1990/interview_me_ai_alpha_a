@@ -225,22 +225,22 @@ class STTService {
 
   private async processFinalResult(text: string) {
     try {
-      // Use optimized approach for fastest possible response
-      await this.processWithOptimizedAPI(text);
+      // Use ULTRA-FAST approach with existing working APIs
+      await this.processUltraFastAPI(text);
     } catch (error) {
       console.error('Error processing final result:', error);
     }
   }
 
-  private async processWithOptimizedAPI(text: string) {
+  private async processUltraFastAPI(text: string) {
     try {
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://interview-c3gu77xyq-jamies-projects-c3ccf727.vercel.app';
-      console.log('Calling optimized API:', `${apiUrl}/api/chat`);
+      console.log('ULTRA-FAST: Calling API:', `${apiUrl}/api/chat`);
       
-      // Start TTS preparation immediately for faster response
+      // Pre-initialize TTS service for immediate response
       const ttsService = TTSService.getInstance();
       
-      // Make AI request with optimized settings
+      // Make AI request with ULTRA-FAST settings
       const response = await fetch(`${apiUrl}/api/chat`, {
         method: 'POST',
         headers: { 
@@ -257,23 +257,23 @@ class STTService {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('AI Response received:', data);
+        console.log('ULTRA-FAST: AI Response received:', data);
         
         // Update transcript with AI response
         this.dispatch?.(appendTranscript(`\nAI: ${data.message}`));
         
-        // Start TTS immediately for fastest audio response
-        console.log('Starting optimized TTS for:', data.message);
+        // Start TTS IMMEDIATELY for fastest possible audio response
+        console.log('ULTRA-FAST: Starting TTS for:', data.message);
         const ttsSuccess = await ttsService.playAudioFromAPI(data.message);
-        console.log('TTS result:', ttsSuccess);
+        console.log('ULTRA-FAST: TTS result:', ttsSuccess);
       } else {
-        console.error('AI API error:', response.status, response.statusText);
+        console.error('ULTRA-FAST: AI API error:', response.status, response.statusText);
         const errorText = await response.text();
-        console.error('API error response:', errorText);
+        console.error('ULTRA-FAST: API error response:', errorText);
       }
 
     } catch (error) {
-      console.error('Error in optimized API call:', error);
+      console.error('ULTRA-FAST: Error in API call:', error);
     }
   }
 

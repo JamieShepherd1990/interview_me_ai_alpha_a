@@ -3,6 +3,9 @@
     "api/chat.ts": {
       "runtime": "@vercel/node"
     },
+    "api/chat-stream.ts": {
+      "runtime": "@vercel/node"
+    },
     "api/feedback.ts": {
       "runtime": "@vercel/node"
     },
@@ -11,10 +14,13 @@
     },
     "api/health.ts": {
       "runtime": "@vercel/node"
+    },
+    "api/test-stream.ts": {
+      "runtime": "@vercel/node"
     }
   },
   "env": {
-    "OPENAI_API_KEY": "@openai_api_key",
-    "ELEVENLABS_API_KEY": "@elevenlabs_api_key"
+    "openai_api_key": "@openai_api_key",
+    "elevenlabs_api_key": "@elevenlabs_api_key"
   }
 }
