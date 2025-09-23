@@ -226,7 +226,9 @@ class STTService {
   private async processFinalResult(text: string) {
     try {
       // Send final transcript to backend for AI processing
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000'}/api/chat`, {
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://interview-c3gu77xyq-jamies-projects-c3ccf727.vercel.app';
+      console.log('Calling API:', `${apiUrl}/api/chat`);
+      const response = await fetch(`${apiUrl}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
