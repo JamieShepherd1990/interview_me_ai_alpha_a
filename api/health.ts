@@ -9,11 +9,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     status: 'healthy',
     timestamp: new Date().toISOString(),
     services: {
-      openai: process.env.OPENAI_API_KEY ? 'configured' : 'missing',
-      elevenlabs: process.env.ELEVENLABS_API_KEY ? 'configured' : 'missing',
+      openai: process.env.openai_api_key ? 'configured' : 'missing',
+      elevenlabs: process.env.elevenlabs_api_key ? 'configured' : 'missing',
     },
     debug: {
-      envKeys: Object.keys(process.env).filter(key => key.includes('OPENAI') || key.includes('ELEVEN')),
+      envKeys: Object.keys(process.env).filter(key => key.includes('openai') || key.includes('eleven')),
       openai_upper: !!process.env.OPENAI_API_KEY,
       openai_lower: !!process.env.openai_api_key,
       elevenlabs_upper: !!process.env.ELEVENLABS_API_KEY,

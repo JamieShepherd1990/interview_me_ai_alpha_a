@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
-const openaiApiKey = process.env.OPENAI_API_KEY;
+const openaiApiKey = process.env.openai_api_key;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
