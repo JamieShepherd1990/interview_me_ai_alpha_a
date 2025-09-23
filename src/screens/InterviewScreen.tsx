@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, TextInput, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
-// import Voice, { SpeechResultsEvent, SpeechErrorEvent } from '@react-native-voice/voice';
 import { Audio } from 'expo-av';
 import * as Speech from 'expo-speech';
 import { RootState } from '../store';
 import { startSession, endSession, updateTranscript, setListening, setSpeaking, appendTranscript } from '../store/slices/sessionSlice';
 import Avatar from '../components/features/Avatar';
+import STTService from '../services/STTService';
+import TTSService from '../services/TTSService';
 
 export default function InterviewScreen() {
   const navigation = useNavigation();
@@ -26,13 +27,24 @@ export default function InterviewScreen() {
     requestPermissions();
     
     return () => {
-      // Cleanup - no Voice to destroy
+      // Cleanup services
+      const sttService = STTService.getInstance();
+      const ttsService = TTSService.getInstance();
+      sttService.destroy();
+      ttsService.destroy();
     };
   }, []);
 
   const initializeVoice = () => {
-    // Voice recognition is disabled - using text input fallback
-    console.log('Voice recognition disabled - using text input fallback');
+    const sttService = STTService.getInstance();
+    const ttsService = TTSService.getInstance();
+    
+    sttService.setDispatch(dispatch);
+    
+    // Set up viseme callback for avatar
+    ttsService.setVisemeCallback((visemes) => {
+      console.log('Viseme events:', visemes);
+    });
   };
 
   const requestPermissions = async () => {
@@ -162,8 +174,15 @@ export default function InterviewScreen() {
         return;
       }
       
-      // Voice.start disabled - using text input fallback
-      console.log('Voice recognition disabled - using text input fallback');
+      const sttService = STTService.getInstance();
+      const success = await sttService.startListening();
+      
+      if (success) {
+        setIsRecording(true);
+        dispatch(setListening(true));
+      } else {
+        Alert.alert('Error', 'Failed to start voice recognition');
+      }
     } catch (error) {
       console.error('Error starting voice recognition:', error);
     }
@@ -171,8 +190,13 @@ export default function InterviewScreen() {
 
   const stopVoiceRecognition = async () => {
     try {
-      // Voice.stop disabled - using text input fallback
-      console.log('Voice recognition disabled - using text input fallback');
+      const sttService = STTService.getInstance();
+      const success = await sttService.stopListening();
+      
+      if (success) {
+        setIsRecording(false);
+        dispatch(setListening(false));
+      }
     } catch (error) {
       console.error('Error stopping voice recognition:', error);
     }
@@ -197,6 +221,10 @@ export default function InterviewScreen() {
   const handleStartInterview = () => {
     dispatch(startSession({ question: "Tell me about yourself and your experience." }));
     setTimer(0);
+    setIsRecording(false);
+    setCurrentResponse('');
+    setConversationHistory([]);
+    dispatch(updateTranscript(''));
   };
 
   const handleEndInterview = () => {

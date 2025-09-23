@@ -27,7 +27,7 @@
           "ios": {
             "resourceClass": "large",
             "buildConfiguration": "Release",
-            "image": "macos-ventura-13.6-xcode-15.0"
+            "image": "macos-sequoia-15.5-xcode-26.0"
           },
       "android": {
         "resourceClass": "medium"

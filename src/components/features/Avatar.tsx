@@ -58,8 +58,7 @@ export default function Avatar({ state, visemeStream = [] }: AvatarProps) {
   };
 
   const getAnimationSource = () => {
-    // For now, we'll use a placeholder
-    // In a real implementation, you'd have different Lottie files for each state
+    // Use the available Lottie animation file
     return require('../../assets/animations/avatar-idle.json');
   };
 

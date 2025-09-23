@@ -1,9 +1,9 @@
-// import Voice, { 
-//   SpeechResultsEvent, 
-//   SpeechErrorEvent, 
-//   SpeechStartEvent,
-//   SpeechEndEvent 
-// } from '@react-native-voice/voice';
+import Voice, { 
+  SpeechResultsEvent, 
+  SpeechErrorEvent, 
+  SpeechStartEvent,
+  SpeechEndEvent 
+} from '@react-native-voice/voice';
 import * as Haptics from 'expo-haptics';
 import { AppDispatch } from '../store';
 import { updateTranscript, appendTranscript, setListening } from '../store/slices/sessionSlice';
@@ -46,8 +46,13 @@ class STTService {
   }
 
   private initializeVoice() {
-    // Voice event handlers disabled - using text input fallback
-    console.log('Voice recognition disabled - using text input fallback');
+    // Set up voice recognition event handlers
+    Voice.onSpeechStart = this.onSpeechStart;
+    Voice.onSpeechEnd = this.onSpeechEnd;
+    Voice.onSpeechResults = this.onSpeechResults;
+    Voice.onSpeechPartialResults = this.onSpeechPartialResults;
+    Voice.onSpeechError = this.onSpeechError;
+    Voice.onSpeechVolumeChanged = this.onSpeechVolumeChanged;
   }
 
   public setDispatch(dispatch: AppDispatch) {
@@ -70,8 +75,10 @@ class STTService {
       this.lastPartialResult = '';
 
       // Start voice recognition with optimized settings
-      // Voice.start disabled - using text input fallback
-      console.log('Voice recognition disabled - using text input fallback');
+      await Voice.start('en-US', {
+        PARTIAL_RESULTS: true,
+        EXTRA_PARTIAL_RESULTS: true,
+      });
 
       this.isListening = true;
       this.dispatch?.(setListening(true));
@@ -92,8 +99,7 @@ class STTService {
 
   public async stopListening(): Promise<boolean> {
     try {
-      // Voice.stop disabled - using text input fallback
-      console.log('Voice recognition disabled - using text input fallback');
+      await Voice.stop();
       this.isListening = false;
       this.dispatch?.(setListening(false));
       
@@ -272,8 +278,7 @@ class STTService {
   public async destroy(): Promise<void> {
     try {
       await this.stopListening();
-      // Voice.destroy disabled - using text input fallback
-      console.log('Voice recognition disabled - using text input fallback');
+      await Voice.destroy();
       this.clearTimers();
     } catch (error) {
       console.error('Error destroying STT service:', error);

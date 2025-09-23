@@ -19,7 +19,8 @@
       "bundleIdentifier": "com.interviewcoach.ai",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "InterviewCoach AI needs access to your microphone to conduct voice-based interviews and provide real-time feedback.",
-        "NSCameraUsageDescription": "InterviewCoach AI may need camera access for future video interview features."
+        "NSCameraUsageDescription": "InterviewCoach AI may need camera access for future video interview features.",
+        "NSSpeechRecognitionUsageDescription": "InterviewCoach AI uses speech recognition to convert your voice to text during interviews."
       },
       "config": {
         "usesNonExemptEncryption": false
