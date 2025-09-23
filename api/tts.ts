@@ -1,14 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
+// @ts-ignore
+import { NextApiRequest, NextApiResponse } from 'next';
 
-export async function POST(request: NextRequest) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   try {
-    const { text, voice_id = '21m00Tcm4TlvDq8ikWAM' } = await request.json();
+    const { text, voice_id = '21m00Tcm4TlvDq8ikWAM' } = req.body;
 
     if (!text) {
-      return NextResponse.json(
-        { error: 'Text is required' },
-        { status: 400 }
-      );
+      return res.status(400).json({ error: 'Text is required' });
     }
 
     // ElevenLabs API call
@@ -36,16 +38,13 @@ export async function POST(request: NextRequest) {
     const audioBuffer = await response.arrayBuffer();
     const base64Audio = Buffer.from(audioBuffer).toString('base64');
 
-    return NextResponse.json({
+    return res.status(200).json({
       audio: base64Audio,
       format: 'mp3'
     });
 
   } catch (error) {
     console.error('TTS API error:', error);
-    return NextResponse.json(
-      { error: 'Failed to generate speech' },
-      { status: 500 }
-    );
+    return res.status(500).json({ error: 'Failed to generate speech' });
   }
 }

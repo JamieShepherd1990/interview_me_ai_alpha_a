@@ -1,13 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
+// @ts-ignore
+import { NextApiRequest, NextApiResponse } from 'next';
 import OpenAI from 'openai';
 
 const openai = new OpenAI({
   apiKey: process.env.openai_api_key,
 });
 
-export async function POST(request: NextRequest) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   try {
-    const body = await request.json();
+    const body = req.body;
     console.log('Full request body:', JSON.stringify(body, null, 2));
     const { messages, role, interviewType, stream } = body;
 
@@ -81,16 +86,13 @@ Your instructions are:
       temperature: 0.7,
     });
 
-    return NextResponse.json({
+    return res.status(200).json({
       message: response.choices[0].message.content,
       usage: response.usage
     });
 
   } catch (error) {
     console.error('OpenAI API error:', error);
-    return NextResponse.json(
-      { error: 'Failed to generate response' },
-      { status: 500 }
-    );
+    return res.status(500).json({ error: 'Failed to generate response' });
   }
 }
