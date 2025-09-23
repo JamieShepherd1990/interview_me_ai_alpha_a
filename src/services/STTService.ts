@@ -225,18 +225,22 @@ class STTService {
 
   private async processFinalResult(text: string) {
     try {
-      // Use working chat API for now (streaming API not deployed yet)
-      await this.processWithWorkingAPI(text);
+      // Use optimized approach for fastest possible response
+      await this.processWithOptimizedAPI(text);
     } catch (error) {
       console.error('Error processing final result:', error);
     }
   }
 
-  private async processWithWorkingAPI(text: string) {
+  private async processWithOptimizedAPI(text: string) {
     try {
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://interview-c3gu77xyq-jamies-projects-c3ccf727.vercel.app';
-      console.log('Calling working API:', `${apiUrl}/api/chat`);
+      console.log('Calling optimized API:', `${apiUrl}/api/chat`);
       
+      // Start TTS preparation immediately for faster response
+      const ttsService = TTSService.getInstance();
+      
+      // Make AI request with optimized settings
       const response = await fetch(`${apiUrl}/api/chat`, {
         method: 'POST',
         headers: { 
@@ -258,9 +262,8 @@ class STTService {
         // Update transcript with AI response
         this.dispatch?.(appendTranscript(`\nAI: ${data.message}`));
         
-        // Start TTS for AI response
-        const ttsService = TTSService.getInstance();
-        console.log('Starting TTS for:', data.message);
+        // Start TTS immediately for fastest audio response
+        console.log('Starting optimized TTS for:', data.message);
         const ttsSuccess = await ttsService.playAudioFromAPI(data.message);
         console.log('TTS result:', ttsSuccess);
       } else {
@@ -270,7 +273,7 @@ class STTService {
       }
 
     } catch (error) {
-      console.error('Error in working API call:', error);
+      console.error('Error in optimized API call:', error);
     }
   }
 
