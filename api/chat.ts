@@ -19,7 +19,7 @@ Your instructions are:
 4. If the user's response is vague, probe for more detail using the STAR (Situation, Task, Action, Result) method.
 5. Never break character or reveal that you are an AI.`;
 
-    // Check if streaming is requested
+    // Check if streaming is requested - FORCE DEPLOYMENT
     if (stream) {
       const streamResponse = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
