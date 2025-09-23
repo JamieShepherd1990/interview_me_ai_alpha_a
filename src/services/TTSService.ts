@@ -164,29 +164,72 @@ class TTSService {
     try {
       console.log('Requesting TTS for text:', text);
 
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://interviewme-lilac.vercel.app';
-      console.log('Calling TTS API:', `${apiUrl}/api/tts`);
-      const response = await fetch(`${apiUrl}/api/tts`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-vercel-protection-bypass': process.env.EXPO_PUBLIC_VERCEL_BYPASS_TOKEN || '6ZOXLEs9hp1hPovTicTHrbJcW0yRENmt'
-        },
-        body: JSON.stringify({ text }),
-      });
+      // Try API first, fallback to local TTS if it fails
+      try {
+        const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://interviewme-lilac.vercel.app';
+        console.log('Calling TTS API:', `${apiUrl}/api/tts`);
+        const response = await fetch(`${apiUrl}/api/tts`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-vercel-protection-bypass': process.env.EXPO_PUBLIC_VERCEL_BYPASS_TOKEN || '6ZOXLEs9hp1hPovTicTHrbJcW0yRENmt'
+          },
+          body: JSON.stringify({ text }),
+        });
 
-      if (!response.ok) {
-        console.error('TTS API error:', response.status, response.statusText);
-        const errorText = await response.text();
-        console.error('TTS API error response:', errorText);
-        return false;
+        if (response.ok) {
+          const data = await response.json();
+          console.log('TTS response received:', data);
+
+          // Convert base64 audio to data URL
+          const audioUrl = `data:audio/mpeg;base64,${data.audio}`;
+          return await this.playAudioFromUrl(audioUrl);
+        } else {
+          console.log('TTS API failed, using fallback');
+          throw new Error('API failed');
+        }
+      } catch (apiError) {
+        console.log('TTS API error, using fallback TTS:', apiError);
+        // Fallback to local TTS
+        return await this.playAudioFromFallback(text);
       }
 
-      const data = await response.json();
-      console.log('TTS response received:', data);
+    } catch (error) {
+      console.error('Error in playAudioFromAPI:', error);
+      return false;
+    }
+  }
 
-      // Convert base64 audio to data URL
-      const audioUrl = `data:audio/mpeg;base64,${data.audio}`;
+  private async playAudioFromFallback(text: string): Promise<boolean> {
+    try {
+      console.log('Using fallback TTS for text:', text);
+      
+      // Use Expo Speech as fallback
+      const { speak } = await import('expo-speech');
+      
+      return new Promise((resolve) => {
+        speak(text, {
+          language: 'en-US',
+          pitch: 1.0,
+          rate: 0.9,
+          onDone: () => {
+            console.log('Fallback TTS completed');
+            resolve(true);
+          },
+          onError: (error) => {
+            console.error('Fallback TTS error:', error);
+            resolve(false);
+          }
+        });
+      });
+    } catch (error) {
+      console.error('Fallback TTS error:', error);
+      return false;
+    }
+  }
+
+  private async playAudioFromUrl(audioUrl: string): Promise<boolean> {
+    try {
       console.log('Playing audio from URL:', audioUrl.substring(0, 50) + '...');
       return await this.playAudio(audioUrl, []);
 

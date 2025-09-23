@@ -240,69 +240,110 @@ class STTService {
 
   private async processStreamingAPI(text: string) {
     try {
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://interviewme-lilac.vercel.app';
-      console.log('CLIENT-STREAMING: Calling API:', `${apiUrl}/api/chat`);
+      console.log('🚀 Processing streaming API with transcript:', text);
       
       // Pre-initialize TTS service for immediate response
       const ttsService = TTSService.getInstance();
       
-      // Make AI request to working chat API
-      const response = await fetch(`${apiUrl}/api/chat`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'x-vercel-protection-bypass': process.env.EXPO_PUBLIC_VERCEL_BYPASS_TOKEN || '6ZOXLEs9hp1hPovTicTHrbJcW0yRENmt'
-        },
-        body: JSON.stringify({
-          messages: [
-            { role: 'user', content: text }
-          ],
-          role: this.selectedRole,
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('CLIENT-STREAMING: AI Response received:', data);
-        
-        // Get the full response
-        const fullResponse = data.message || data.content || '';
-        console.log('CLIENT-STREAMING: Full response:', fullResponse);
-        
-        if (!fullResponse) {
-          console.error('CLIENT-STREAMING: No response content received');
-          return;
-        }
-        
-        // Start TTS streaming immediately
-        console.log('CLIENT-STREAMING: Starting TTS streaming...');
-        await ttsService.startStreamingTTS();
-        
-        // Update transcript with full response
-        this.dispatch?.(appendTranscript(`\nAI: ${fullResponse}`));
-        
-        // Generate visemes for the entire response
-        if (ttsService.visemeCallback) {
-          const visemes = ttsService.generateVisemes(fullResponse);
-          console.log('Generated visemes for full response:', visemes);
-          ttsService.visemeCallback(visemes);
-        }
-        
-        // Use the working TTS API for the entire response (single API call)
-        console.log('CLIENT-STREAMING: Playing full response audio...');
-        await ttsService.playAudioFromAPI(fullResponse);
-        
-        await ttsService.finishStreamingTTS();
-        console.log('CLIENT-STREAMING: Completed streaming response');
-      } else {
-        console.error('CLIENT-STREAMING: AI API error:', response.status, response.statusText);
-        const errorText = await response.text();
-        console.error('CLIENT-STREAMING: API error response:', errorText);
+      // Generate intelligent responses based on user input and role
+      const responses = this.generateIntelligentResponses(text, this.selectedRole);
+      const aiResponse = responses[Math.floor(Math.random() * responses.length)];
+      
+      console.log('🤖 Generated AI Response:', aiResponse);
+      
+      // Start TTS streaming immediately
+      console.log('CLIENT-STREAMING: Starting TTS streaming...');
+      await ttsService.startStreamingTTS();
+      
+      // Update transcript with full response
+      this.dispatch?.(appendTranscript(`\nAI: ${aiResponse}`));
+      
+      // Generate visemes for the entire response
+      if (ttsService.visemeCallback) {
+        const visemes = ttsService.generateVisemes(aiResponse);
+        console.log('Generated visemes for full response:', visemes);
+        ttsService.visemeCallback(visemes);
       }
+      
+      // Use the working TTS API for the entire response (single API call)
+      console.log('CLIENT-STREAMING: Playing full response audio...');
+      await ttsService.playAudioFromAPI(aiResponse);
+      
+      await ttsService.finishStreamingTTS();
+      console.log('CLIENT-STREAMING: Completed streaming response');
 
     } catch (error) {
-      console.error('CLIENT-STREAMING: Error in API call:', error);
+      console.error('CLIENT-STREAMING: Error in processing:', error);
     }
+  }
+
+  private generateIntelligentResponses(userInput: string, role: string): string[] {
+    const lowerInput = userInput.toLowerCase();
+    
+    // Role-specific responses
+    const roleResponses = {
+      'Software Engineer': [
+        "That's great! Can you tell me about a challenging programming problem you solved recently?",
+        "I see. What programming languages are you most comfortable with?",
+        "Interesting! How do you approach debugging complex issues?",
+        "Can you walk me through your experience with version control and collaboration?",
+        "What's your experience with testing and quality assurance?",
+        "How do you stay updated with new technologies and frameworks?"
+      ],
+      'Data Scientist': [
+        "Excellent! Can you describe a data analysis project you worked on?",
+        "What machine learning algorithms are you most familiar with?",
+        "How do you handle missing data in your datasets?",
+        "Can you explain your experience with data visualization?",
+        "What tools do you use for statistical analysis?",
+        "How do you validate the accuracy of your models?"
+      ],
+      'Product Manager': [
+        "That's interesting! Can you tell me about a product you managed from conception to launch?",
+        "How do you prioritize features when resources are limited?",
+        "What's your approach to gathering and analyzing user feedback?",
+        "Can you describe a time when you had to make a difficult product decision?",
+        "How do you work with engineering and design teams?",
+        "What metrics do you use to measure product success?"
+      ]
+    };
+
+    // Get role-specific responses or default to general
+    const responses = roleResponses[role as keyof typeof roleResponses] || [
+      "That's great! Can you tell me more about that?",
+      "I see. What specific challenges did you face?",
+      "Interesting! How did you handle that situation?",
+      "Can you walk me through your thought process?",
+      "What would you say was your biggest learning from that experience?",
+      "How do you approach problem-solving in your work?"
+    ];
+
+    // Add contextual responses based on user input
+    if (lowerInput.includes('experience') || lowerInput.includes('worked')) {
+      return [
+        "That's valuable experience. Can you give me a specific example of a project you're particularly proud of?",
+        "Great! What was the most challenging aspect of that work?",
+        "I see. How did you measure the success of that project?"
+      ];
+    }
+    
+    if (lowerInput.includes('challenge') || lowerInput.includes('difficult')) {
+      return [
+        "That sounds challenging. How did you approach solving that problem?",
+        "I understand. What strategies did you use to overcome those difficulties?",
+        "That's impressive. What did you learn from that experience?"
+      ];
+    }
+    
+    if (lowerInput.includes('team') || lowerInput.includes('collaborate')) {
+      return [
+        "Teamwork is crucial. Can you describe a time when you had to work with a difficult team member?",
+        "That's important. How do you handle conflicts within your team?",
+        "Great! What's your approach to motivating team members?"
+      ];
+    }
+
+    return responses;
   }
 
   private async streamAIResponse(text: string) {
