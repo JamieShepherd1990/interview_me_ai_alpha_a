@@ -1,3 +1,4 @@
+// @ts-ignore
 import { NextApiRequest, NextApiResponse } from 'next';
 
 const openaiApiKey = process.env.openai_api_key;
