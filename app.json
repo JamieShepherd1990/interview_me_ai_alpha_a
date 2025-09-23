@@ -17,11 +17,12 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.interviewcoach.ai",
-      "buildNumber": "3",
+      "buildNumber": "4",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "InterviewCoach AI needs access to your microphone to conduct voice-based interviews and provide real-time feedback.",
         "NSCameraUsageDescription": "InterviewCoach AI may need camera access for future video interview features.",
-        "NSSpeechRecognitionUsageDescription": "InterviewCoach AI uses speech recognition to convert your voice to text during interviews."
+        "NSSpeechRecognitionUsageDescription": "InterviewCoach AI uses speech recognition to convert your voice to text during interviews.",
+        "NSPhotoLibraryUsageDescription": "InterviewCoach AI may need access to your photo library for future features like profile pictures or sharing interview results."
       },
       "config": {
         "usesNonExemptEncryption": false
