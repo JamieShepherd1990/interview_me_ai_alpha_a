@@ -74,6 +74,12 @@ class STTService {
       this.finalTranscript = '';
       this.lastPartialResult = '';
 
+      // Check if Voice is available
+      if (!Voice) {
+        console.error('Voice module not available');
+        return false;
+      }
+
       // Start voice recognition with optimized settings
       await Voice.start('en-US', {
         PARTIAL_RESULTS: true,
@@ -87,12 +93,20 @@ class STTService {
       this.startStreamingTimer();
 
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      console.log('Voice recognition started successfully');
       return true;
 
     } catch (error) {
       console.error('Error starting voice recognition:', error);
       this.isListening = false;
       this.dispatch?.(setListening(false));
+      
+      // Show user-friendly error message
+      if (this.dispatch) {
+        // You could dispatch an error action here if you have one
+        console.log('Voice recognition failed - check microphone permissions');
+      }
+      
       return false;
     }
   }
@@ -164,9 +178,11 @@ class STTService {
 
   private onSpeechResults = (event: any) => {
     const results = event.value || [];
+    console.log('Speech results received:', results);
+    
     if (results.length > 0) {
       this.finalTranscript = results[0];
-      console.log('Final result:', this.finalTranscript);
+      console.log('Final transcript:', this.finalTranscript);
       
       // Update Redux store with final transcript
       this.dispatch?.(updateTranscript(this.finalTranscript));
@@ -174,6 +190,8 @@ class STTService {
       
       // Process final result
       this.processFinalResult(this.finalTranscript);
+    } else {
+      console.log('No speech results received');
     }
   };
 

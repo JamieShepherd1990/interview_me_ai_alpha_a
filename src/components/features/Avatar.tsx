@@ -58,8 +58,14 @@ export default function Avatar({ state, visemeStream = [] }: AvatarProps) {
   };
 
   const getAnimationSource = () => {
-    // Use the available Lottie animation file
-    return require('../../assets/animations/avatar-idle.json');
+    try {
+      // Use the available Lottie animation file
+      return require('../../assets/animations/avatar-idle.json');
+    } catch (error) {
+      console.error('Error loading avatar animation:', error);
+      // Return a fallback or null
+      return null;
+    }
   };
 
   return (

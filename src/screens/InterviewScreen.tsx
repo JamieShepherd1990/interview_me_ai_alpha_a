@@ -5,7 +5,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { Audio } from 'expo-av';
 import * as Speech from 'expo-speech';
 import { RootState } from '../store';
-import { startSession, endSession, updateTranscript, setListening, setSpeaking, appendTranscript } from '../store/slices/sessionSlice';
+import { startSession, endSession, updateTranscript, setListening, setSpeaking, appendTranscript, updateVisemeStream } from '../store/slices/sessionSlice';
 import Avatar from '../components/features/Avatar';
 import STTService from '../services/STTService';
 import TTSService from '../services/TTSService';
@@ -44,6 +44,7 @@ export default function InterviewScreen() {
     // Set up viseme callback for avatar
     ttsService.setVisemeCallback((visemes) => {
       console.log('Viseme events:', visemes);
+      dispatch(updateVisemeStream(visemes));
     });
   };
 
@@ -51,56 +52,27 @@ export default function InterviewScreen() {
     try {
       const { status } = await Audio.requestPermissionsAsync();
       setHasPermission(status === 'granted');
+      
+      if (status !== 'granted') {
+        Alert.alert(
+          'Microphone Permission Required',
+          'InterviewCoach AI needs microphone access to conduct voice-based interviews. Please enable microphone permissions in Settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Settings', onPress: () => {
+              // You could open settings here if needed
+              console.log('User should go to Settings to enable microphone');
+            }}
+          ]
+        );
+      }
     } catch (error) {
       console.error('Error requesting permissions:', error);
+      Alert.alert('Permission Error', 'Failed to request microphone permission');
     }
   };
 
-  const onSpeechStart = () => {
-    console.log('Speech started');
-    setIsRecording(true);
-    dispatch(setListening(true));
-    
-    // Barge-in logic: Stop AI speaking if user starts talking
-    if (session.isSpeaking) {
-      Speech.stop();
-      dispatch(setSpeaking(false));
-    }
-  };
-
-  const onSpeechEnd = () => {
-    console.log('Speech ended');
-    setIsRecording(false);
-    dispatch(setListening(false));
-  };
-
-  const onSpeechResults = (event: any) => {
-    const spokenText = event.value?.[0] || '';
-    console.log('Speech results:', spokenText);
-    
-    if (spokenText.trim()) {
-      dispatch(updateTranscript(spokenText));
-      setConversationHistory(prev => [...prev, {
-        type: 'user',
-        text: spokenText,
-        timestamp: Date.now()
-      }]);
-      
-      // Generate AI response
-      generateAIResponse(spokenText);
-    }
-  };
-
-  const onSpeechPartialResults = (event: any) => {
-    const partialText = event.value?.[0] || '';
-    dispatch(updateTranscript(partialText));
-  };
-
-  const onSpeechError = (event: any) => {
-    console.error('Speech error:', event.error);
-    setIsRecording(false);
-    dispatch(setListening(false));
-  };
+  // Voice handlers are now handled by STTService
 
   const generateAIResponse = async (userInput: string) => {
     try {
@@ -168,8 +140,11 @@ export default function InterviewScreen() {
       if (!hasPermission) {
         Alert.alert(
           'Permission Required',
-          'Microphone access is required for voice interviews.',
-          [{ text: 'OK' }]
+          'Microphone access is required for voice interviews. Please enable microphone permissions in Settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Request Permission', onPress: requestPermissions }
+          ]
         );
         return;
       }
@@ -182,11 +157,19 @@ export default function InterviewScreen() {
         dispatch(setListening(true));
         console.log('Voice recognition started successfully');
       } else {
-        Alert.alert('Error', 'Failed to start voice recognition');
+        Alert.alert(
+          'Voice Recognition Error', 
+          'Failed to start voice recognition. Please check your microphone and try again.',
+          [{ text: 'OK' }]
+        );
       }
     } catch (error) {
       console.error('Error starting voice recognition:', error);
-      Alert.alert('Error', 'Failed to start voice recognition');
+      Alert.alert(
+        'Voice Recognition Error', 
+        'An unexpected error occurred. Please try again.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
@@ -222,12 +205,22 @@ export default function InterviewScreen() {
   };
 
   const handleStartInterview = () => {
+    // Reset all state for fresh interview
     dispatch(startSession({ question: "Tell me about yourself and your experience." }));
     setTimer(0);
     setIsRecording(false);
     setCurrentResponse('');
     setConversationHistory([]);
     dispatch(updateTranscript(''));
+    dispatch(setListening(false));
+    dispatch(setSpeaking(false));
+    dispatch(updateVisemeStream([]));
+    
+    // Stop any existing voice recognition
+    const sttService = STTService.getInstance();
+    sttService.stopListening();
+    
+    console.log('Interview started - all state reset');
   };
 
   const handleEndInterview = () => {
@@ -285,7 +278,7 @@ export default function InterviewScreen() {
       <View style={styles.avatarContainer}>
         <Avatar 
           state={session.isSpeaking ? 'speaking' : session.isListening ? 'listening' : 'idle'}
-          visemeStream={[]}
+          visemeStream={session.visemeStream || []}
         />
         <Text style={styles.avatarLabel}>AI Interview Coach</Text>
       </View>

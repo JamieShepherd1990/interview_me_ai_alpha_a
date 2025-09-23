@@ -1,5 +1,11 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
+export interface VisemeEvent {
+  phoneme: string;
+  timestamp: number;
+  duration: number;
+}
+
 export interface SessionState {
   status: 'idle' | 'preparing' | 'active' | 'paused' | 'completed';
   startTime: number | null;
@@ -8,6 +14,7 @@ export interface SessionState {
   currentQuestion: string;
   isListening: boolean;
   isSpeaking: boolean;
+  visemeStream: VisemeEvent[];
   feedback: {
     score: number;
     strengths: string[];
@@ -24,6 +31,7 @@ const initialState: SessionState = {
   currentQuestion: '',
   isListening: false,
   isSpeaking: false,
+  visemeStream: [],
   feedback: null
 };
 
@@ -72,6 +80,9 @@ const sessionSlice = createSlice({
     setFeedback: (state, action: PayloadAction<SessionState['feedback']>) => {
       state.feedback = action.payload;
     },
+    updateVisemeStream: (state, action: PayloadAction<VisemeEvent[]>) => {
+      state.visemeStream = action.payload;
+    },
     resetSession: (state) => {
       return { ...initialState };
     },
@@ -89,6 +100,7 @@ export const {
   setSpeaking,
   updateDuration,
   setFeedback,
+  updateVisemeStream,
   resetSession,
 } = sessionSlice.actions;
 
