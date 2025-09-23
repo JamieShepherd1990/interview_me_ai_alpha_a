@@ -180,11 +180,13 @@ export default function InterviewScreen() {
       if (success) {
         setIsRecording(true);
         dispatch(setListening(true));
+        console.log('Voice recognition started successfully');
       } else {
         Alert.alert('Error', 'Failed to start voice recognition');
       }
     } catch (error) {
       console.error('Error starting voice recognition:', error);
+      Alert.alert('Error', 'Failed to start voice recognition');
     }
   };
 
@@ -196,6 +198,7 @@ export default function InterviewScreen() {
       if (success) {
         setIsRecording(false);
         dispatch(setListening(false));
+        console.log('Voice recognition stopped successfully');
       }
     } catch (error) {
       console.error('Error stopping voice recognition:', error);
@@ -282,6 +285,7 @@ export default function InterviewScreen() {
       <View style={styles.avatarContainer}>
         <Avatar 
           state={session.isSpeaking ? 'speaking' : session.isListening ? 'listening' : 'idle'}
+          visemeStream={[]}
         />
         <Text style={styles.avatarLabel}>AI Interview Coach</Text>
       </View>

@@ -169,6 +169,7 @@ class STTService {
       console.log('Final result:', this.finalTranscript);
       
       // Update Redux store with final transcript
+      this.dispatch?.(updateTranscript(this.finalTranscript));
       this.dispatch?.(appendTranscript(`\nUser: ${this.finalTranscript}`));
       
       // Process final result
