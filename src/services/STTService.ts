@@ -263,7 +263,13 @@ class STTService {
         const fullResponse = data.message || data.content || '';
         console.log('CLIENT-STREAMING: Full response:', fullResponse);
         
+        if (!fullResponse) {
+          console.error('CLIENT-STREAMING: No response content received');
+          return;
+        }
+        
         // Start TTS streaming immediately
+        console.log('CLIENT-STREAMING: Starting TTS streaming...');
         await ttsService.startStreamingTTS();
         
         // Break response into words for simulated streaming
@@ -276,6 +282,8 @@ class STTService {
         for (let i = 0; i < words.length; i++) {
           const word = words[i];
           currentText += (i > 0 ? ' ' : '') + word;
+          
+          console.log(`CLIENT-STREAMING: Processing word ${i + 1}/${words.length}: "${word}"`);
           
           // Stream to TTS in chunks for real-time audio
           await ttsService.streamTextToTTS(word + (i < words.length - 1 ? ' ' : ''));

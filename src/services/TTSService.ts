@@ -203,40 +203,9 @@ class TTSService {
       this.isStreaming = true;
       this.audioChunks = [];
       
-      // Initialize WebSocket connection for real-time TTS
-      const wsUrl = `${process.env.EXPO_PUBLIC_API_URL?.replace('http', 'ws') || 'ws://localhost:3000'}/ws/tts-stream`;
-      this.websocket = new WebSocket(wsUrl);
-
-      this.websocket.onopen = () => {
-        console.log('TTS WebSocket connected for streaming');
-      };
-
-      this.websocket.onmessage = async (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          
-          if (data.type === 'audio_chunk') {
-            // Immediately play audio chunks for real-time response
-            this.audioChunks.push(data.audio);
-            
-            if (this.audioChunks.length === 1 && !this.isPlaying) {
-              await this.playBufferedAudio();
-            }
-          } else if (data.type === 'viseme') {
-            // Real-time viseme events for lip-sync
-            if (this.visemeCallback) {
-              this.visemeCallback([data.viseme]);
-            }
-          }
-        } catch (error) {
-          console.error('Error processing TTS stream:', error);
-        }
-      };
-
-      this.websocket.onerror = (error) => {
-        console.error('TTS WebSocket error:', error);
-        this.isStreaming = false;
-      };
+      // For now, we'll use the working TTS API instead of WebSocket
+      // This ensures TTS actually works
+      console.log('TTS streaming session started (using API fallback)');
 
     } catch (error) {
       console.error('Error starting streaming TTS:', error);
@@ -245,31 +214,61 @@ class TTSService {
   }
 
   public async streamTextToTTS(text: string): Promise<void> {
-    if (!this.websocket || !this.isStreaming) {
-      console.log('WebSocket not ready for streaming TTS');
+    if (!this.isStreaming) {
+      console.log('TTS streaming not active');
       return;
     }
 
     try {
-      // Send text chunk to TTS service for immediate processing
-      this.websocket.send(JSON.stringify({
-        action: 'stream_text',
-        text,
-        voiceId: 'pNInz6obpgDQGcFmaJgB',
-        settings: {
-          stability: 0.5,
-          similarity_boost: 0.5,
-        }
-      }));
+      console.log('Streaming text to TTS:', text);
+      
+      // Use the working TTS API for each text chunk
+      await this.playAudioFromAPI(text);
+      
+      // Simulate viseme events for lip-sync
+      if (this.visemeCallback) {
+        // Generate basic viseme events for lip-sync
+        const visemes = this.generateVisemes(text);
+        console.log('Generated visemes for lip-sync:', visemes);
+        this.visemeCallback(visemes);
+      } else {
+        console.log('No viseme callback set');
+      }
     } catch (error) {
       console.error('Error streaming text to TTS:', error);
     }
   }
 
+  private generateVisemes(text: string): VisemeEvent[] {
+    // Generate basic viseme events for lip-sync
+    const visemes: VisemeEvent[] = [];
+    const words = text.split(' ');
+    
+    words.forEach((word, index) => {
+      visemes.push({
+        phoneme: this.getVisemeForWord(word),
+        timestamp: Date.now() + (index * 200), // 200ms per word
+        duration: 200 // 200ms duration per word
+      });
+    });
+    
+    return visemes;
+  }
+
+  private getVisemeForWord(word: string): string {
+    // Simple viseme mapping based on word content
+    const lowerWord = word.toLowerCase();
+    if (lowerWord.includes('a') || lowerWord.includes('e')) return 'A';
+    if (lowerWord.includes('i') || lowerWord.includes('y')) return 'I';
+    if (lowerWord.includes('o') || lowerWord.includes('u')) return 'O';
+    if (lowerWord.includes('m') || lowerWord.includes('p') || lowerWord.includes('b')) return 'M';
+    if (lowerWord.includes('f') || lowerWord.includes('v')) return 'F';
+    return 'A'; // Default viseme
+  }
+
   public async finishStreamingTTS(): Promise<void> {
     try {
-      if (this.websocket && this.isStreaming) {
-        this.websocket.send(JSON.stringify({ action: 'finish' }));
+      if (this.isStreaming) {
         this.isStreaming = false;
         console.log('Finished streaming TTS');
       }
