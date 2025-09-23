@@ -247,12 +247,12 @@ class STTService {
         console.log('AI Response received:', data);
         
         // Update transcript with AI response
-        this.dispatch?.(appendTranscript(`\nAI: ${data.content}`));
+        this.dispatch?.(appendTranscript(`\nAI: ${data.message}`));
         
         // Start TTS for AI response with low latency
         const ttsService = TTSService.getInstance();
-        console.log('Starting TTS for:', data.content);
-        const ttsSuccess = await ttsService.playAudioFromAPI(data.content);
+        console.log('Starting TTS for:', data.message);
+        const ttsSuccess = await ttsService.playAudioFromAPI(data.message);
         console.log('TTS result:', ttsSuccess);
       } else {
         console.error('AI API error:', response.status, response.statusText);
