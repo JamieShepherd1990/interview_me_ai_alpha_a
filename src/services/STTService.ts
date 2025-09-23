@@ -225,10 +225,52 @@ class STTService {
 
   private async processFinalResult(text: string) {
     try {
-      // Use streaming AI for real-time conversation like ChatGPT
-      await this.streamAIResponse(text);
+      // Use working chat API for now (streaming API not deployed yet)
+      await this.processWithWorkingAPI(text);
     } catch (error) {
       console.error('Error processing final result:', error);
+    }
+  }
+
+  private async processWithWorkingAPI(text: string) {
+    try {
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://interview-c3gu77xyq-jamies-projects-c3ccf727.vercel.app';
+      console.log('Calling working API:', `${apiUrl}/api/chat`);
+      
+      const response = await fetch(`${apiUrl}/api/chat`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-vercel-protection-bypass': process.env.EXPO_PUBLIC_VERCEL_BYPASS_TOKEN || '6ZOXLEs9hp1hPovTicTHrbJcW0yRENmt'
+        },
+        body: JSON.stringify({
+          messages: [
+            { role: 'user', content: text }
+          ],
+          role: 'Software Engineer',
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('AI Response received:', data);
+        
+        // Update transcript with AI response
+        this.dispatch?.(appendTranscript(`\nAI: ${data.message}`));
+        
+        // Start TTS for AI response
+        const ttsService = TTSService.getInstance();
+        console.log('Starting TTS for:', data.message);
+        const ttsSuccess = await ttsService.playAudioFromAPI(data.message);
+        console.log('TTS result:', ttsSuccess);
+      } else {
+        console.error('AI API error:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('API error response:', errorText);
+      }
+
+    } catch (error) {
+      console.error('Error in working API call:', error);
     }
   }
 
@@ -287,7 +329,7 @@ class STTService {
 
             try {
               const parsed = JSON.parse(data);
-              if (parsed.content) {
+              if (parsed.type === 'chunk' && parsed.content) {
                 fullResponse += parsed.content;
                 
                 // Stream to TTS immediately for real-time audio
@@ -300,6 +342,10 @@ class STTService {
                 } else {
                   this.dispatch?.(appendTranscript(parsed.content));
                 }
+              } else if (parsed.type === 'complete') {
+                await ttsService.finishStreamingTTS();
+                this.dispatch?.(appendTranscript(`\nAI: ${fullResponse}`));
+                return;
               }
             } catch (e) {
               // Skip malformed JSON
