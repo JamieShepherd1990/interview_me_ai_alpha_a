@@ -159,6 +159,35 @@ class TTSService {
     }
   }
 
+  // Simple method for STT service to call
+  public async playAudioFromAPI(text: string): Promise<boolean> {
+    try {
+      console.log('Requesting TTS for text:', text);
+      
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000'}/api/tts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!response.ok) {
+        console.error('TTS API error:', response.status, response.statusText);
+        return false;
+      }
+
+      const data = await response.json();
+      console.log('TTS response received');
+
+      // Convert base64 audio to data URL
+      const audioUrl = `data:audio/mpeg;base64,${data.audio}`;
+      return await this.playAudio(audioUrl, []);
+
+    } catch (error) {
+      console.error('Error playing audio from API:', error);
+      return false;
+    }
+  }
+
   private async processQueue(): Promise<void> {
     if (this.isProcessingQueue || this.queue.length === 0) return;
 
@@ -187,7 +216,10 @@ class TTSService {
       if (!response.ok) throw new Error('TTS API error');
 
       const data = await response.json();
-      await this.playAudio(data.audioUrl, data.visemes);
+      
+      // Convert base64 audio to data URL
+      const audioUrl = `data:audio/mpeg;base64,${data.audio}`;
+      await this.playAudio(audioUrl, []);
 
     } catch (error) {
       console.error('Error in synthesizeAndPlay:', error);

@@ -230,21 +230,25 @@ class STTService {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: text,
-          transcript: this.finalTranscript,
+          messages: [
+            { role: 'user', content: text }
+          ],
           role: 'Software Engineer', // Should come from session state
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
+        console.log('AI Response received:', data);
         
         // Update transcript with AI response
-        this.dispatch?.(appendTranscript(`\nAI: ${data.response}`));
+        this.dispatch?.(appendTranscript(`\nAI: ${data.content}`));
         
         // Start TTS for AI response with low latency
         const ttsService = TTSService.getInstance();
-        await ttsService.streamAudio(data.response);
+        await ttsService.playAudioFromAPI(data.content);
+      } else {
+        console.error('AI API error:', response.status, response.statusText);
       }
 
     } catch (error) {
