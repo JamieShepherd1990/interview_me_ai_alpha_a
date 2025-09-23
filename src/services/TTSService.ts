@@ -163,12 +163,12 @@ class TTSService {
   public async playAudioFromAPI(text: string): Promise<boolean> {
     try {
       console.log('Requesting TTS for text:', text);
-      
+
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://interview-c3gu77xyq-jamies-projects-c3ccf727.vercel.app';
       console.log('Calling TTS API:', `${apiUrl}/api/tts`);
       const response = await fetch(`${apiUrl}/api/tts`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'x-vercel-protection-bypass': process.env.EXPO_PUBLIC_VERCEL_BYPASS_TOKEN || '6ZOXLEs9hp1hPovTicTHrbJcW0yRENmt'
         },
@@ -194,6 +194,129 @@ class TTSService {
       console.error('Error playing audio from API:', error);
       return false;
     }
+  }
+
+  // Real-time streaming TTS for ChatGPT-like responsiveness
+  public async startStreamingTTS(): Promise<void> {
+    try {
+      console.log('Starting streaming TTS session');
+      this.isStreaming = true;
+      this.audioChunks = [];
+      
+      // Initialize WebSocket connection for real-time TTS
+      const wsUrl = `${process.env.EXPO_PUBLIC_API_URL?.replace('http', 'ws') || 'ws://localhost:3000'}/ws/tts-stream`;
+      this.websocket = new WebSocket(wsUrl);
+
+      this.websocket.onopen = () => {
+        console.log('TTS WebSocket connected for streaming');
+      };
+
+      this.websocket.onmessage = async (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          if (data.type === 'audio_chunk') {
+            // Immediately play audio chunks for real-time response
+            this.audioChunks.push(data.audio);
+            
+            if (this.audioChunks.length === 1 && !this.isPlaying) {
+              await this.playBufferedAudio();
+            }
+          } else if (data.type === 'viseme') {
+            // Real-time viseme events for lip-sync
+            if (this.visemeCallback) {
+              this.visemeCallback([data.viseme]);
+            }
+          }
+        } catch (error) {
+          console.error('Error processing TTS stream:', error);
+        }
+      };
+
+      this.websocket.onerror = (error) => {
+        console.error('TTS WebSocket error:', error);
+        this.isStreaming = false;
+      };
+
+    } catch (error) {
+      console.error('Error starting streaming TTS:', error);
+      this.isStreaming = false;
+    }
+  }
+
+  public async streamTextToTTS(text: string): Promise<void> {
+    if (!this.websocket || !this.isStreaming) {
+      console.log('WebSocket not ready for streaming TTS');
+      return;
+    }
+
+    try {
+      // Send text chunk to TTS service for immediate processing
+      this.websocket.send(JSON.stringify({
+        action: 'stream_text',
+        text,
+        voiceId: 'pNInz6obpgDQGcFmaJgB',
+        settings: {
+          stability: 0.5,
+          similarity_boost: 0.5,
+        }
+      }));
+    } catch (error) {
+      console.error('Error streaming text to TTS:', error);
+    }
+  }
+
+  public async finishStreamingTTS(): Promise<void> {
+    try {
+      if (this.websocket && this.isStreaming) {
+        this.websocket.send(JSON.stringify({ action: 'finish' }));
+        this.isStreaming = false;
+        console.log('Finished streaming TTS');
+      }
+    } catch (error) {
+      console.error('Error finishing streaming TTS:', error);
+    }
+  }
+
+  // Barge-in methods for real-time interruption
+  public isCurrentlyPlaying(): boolean {
+    return this.isPlaying;
+  }
+
+  public isCurrentlyStreaming(): boolean {
+    return this.isStreaming;
+  }
+
+  public async bargeIn(): Promise<void> {
+    try {
+      console.log('Barge-in: Stopping all audio immediately');
+      
+      // Stop current audio playback
+      if (this.currentSound) {
+        await this.currentSound.stopAsync();
+        await this.currentSound.unloadAsync();
+        this.currentSound = null;
+      }
+      
+      // Stop streaming
+      if (this.websocket && this.isStreaming) {
+        this.websocket.close();
+        this.websocket = null;
+        this.isStreaming = false;
+      }
+      
+      // Clear audio chunks
+      this.audioChunks = [];
+      this.isPlaying = false;
+      
+      console.log('Barge-in: Audio stopped successfully');
+    } catch (error) {
+      console.error('Error during barge-in:', error);
+    }
+  }
+
+  public async stopCurrentAudio(): Promise<void> {
+    await this.bargeIn();
   }
 
   private async processQueue(): Promise<void> {

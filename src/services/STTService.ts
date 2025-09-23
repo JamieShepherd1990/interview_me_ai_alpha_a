@@ -29,9 +29,9 @@ class STTService {
   
   private config: STTConfig = {
     partialResultsEnabled: true,
-    streamingInterval: 300, // Stream every 300ms for low latency
-    silenceTimeout: 2000, // 2 seconds of silence before stopping
-    bargeInThreshold: 0.7, // Confidence threshold for interruption
+    streamingInterval: 150, // Stream every 150ms for ultra-low latency
+    silenceTimeout: 800, // 800ms of silence before stopping (natural pause)
+    bargeInThreshold: 0.6, // Lower threshold for faster interruption
   };
 
   private constructor() {
@@ -225,10 +225,19 @@ class STTService {
 
   private async processFinalResult(text: string) {
     try {
-      // Send final transcript to backend for AI processing
+      // Use streaming AI for real-time conversation like ChatGPT
+      await this.streamAIResponse(text);
+    } catch (error) {
+      console.error('Error processing final result:', error);
+    }
+  }
+
+  private async streamAIResponse(text: string) {
+    try {
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://interview-c3gu77xyq-jamies-projects-c3ccf727.vercel.app';
-      console.log('Calling API:', `${apiUrl}/api/chat`);
-      const response = await fetch(`${apiUrl}/api/chat`, {
+      console.log('Starting streaming AI response:', `${apiUrl}/api/chat-stream`);
+      
+      const response = await fetch(`${apiUrl}/api/chat-stream`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -238,30 +247,69 @@ class STTService {
           messages: [
             { role: 'user', content: text }
           ],
-          role: 'Software Engineer', // Should come from session state
+          role: 'Software Engineer',
         }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log('AI Response received:', data);
-        
-        // Update transcript with AI response
-        this.dispatch?.(appendTranscript(`\nAI: ${data.message}`));
-        
-        // Start TTS for AI response with low latency
-        const ttsService = TTSService.getInstance();
-        console.log('Starting TTS for:', data.message);
-        const ttsSuccess = await ttsService.playAudioFromAPI(data.message);
-        console.log('TTS result:', ttsSuccess);
-      } else {
-        console.error('AI API error:', response.status, response.statusText);
-        const errorText = await response.text();
-        console.error('API error response:', errorText);
+      if (!response.ok) {
+        console.error('Streaming API error:', response.status, response.statusText);
+        return;
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        console.error('No response body reader available');
+        return;
+      }
+
+      let fullResponse = '';
+      const ttsService = TTSService.getInstance();
+      let isFirstChunk = true;
+
+      // Start TTS streaming immediately for first chunk
+      await ttsService.startStreamingTTS();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = new TextDecoder().decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') {
+              await ttsService.finishStreamingTTS();
+              this.dispatch?.(appendTranscript(`\nAI: ${fullResponse}`));
+              return;
+            }
+
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.content) {
+                fullResponse += parsed.content;
+                
+                // Stream to TTS immediately for real-time audio
+                await ttsService.streamTextToTTS(parsed.content);
+                
+                // Update transcript progressively
+                if (isFirstChunk) {
+                  this.dispatch?.(appendTranscript(`\nAI: ${parsed.content}`));
+                  isFirstChunk = false;
+                } else {
+                  this.dispatch?.(appendTranscript(parsed.content));
+                }
+              }
+            } catch (e) {
+              // Skip malformed JSON
+            }
+          }
+        }
       }
 
     } catch (error) {
-      console.error('Error processing final result:', error);
+      console.error('Error in streaming AI response:', error);
     }
   }
 
