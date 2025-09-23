@@ -225,22 +225,22 @@ class STTService {
 
   private async processFinalResult(text: string) {
     try {
-      // Use HYBRID approach: Fast API + Optimized TTS for near-real-time response
-      await this.processHybridFastAPI(text);
+      // Use STREAMING approach with existing working chat API
+      await this.processStreamingAPI(text);
     } catch (error) {
       console.error('Error processing final result:', error);
     }
   }
 
-  private async processHybridFastAPI(text: string) {
+  private async processStreamingAPI(text: string) {
     try {
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://interview-c3gu77xyq-jamies-projects-c3ccf727.vercel.app';
-      console.log('HYBRID-FAST: Calling API:', `${apiUrl}/api/chat`);
+      console.log('STREAMING: Calling API:', `${apiUrl}/api/chat`);
       
       // Pre-initialize TTS service for immediate response
       const ttsService = TTSService.getInstance();
       
-      // Make AI request with optimized settings for fastest response
+      // Make AI request with STREAMING enabled
       const response = await fetch(`${apiUrl}/api/chat`, {
         method: 'POST',
         headers: { 
@@ -252,28 +252,75 @@ class STTService {
             { role: 'user', content: text }
           ],
           role: 'Software Engineer',
+          stream: true, // Enable streaming!
         }),
       });
 
       if (response.ok) {
-        const data = await response.json();
-        console.log('HYBRID-FAST: AI Response received:', data);
+        console.log('STREAMING: Response received, processing stream...');
         
-        // Update transcript with AI response
-        this.dispatch?.(appendTranscript(`\nAI: ${data.message}`));
-        
-        // Start TTS IMMEDIATELY for fastest possible audio response
-        console.log('HYBRID-FAST: Starting TTS for:', data.message);
-        const ttsSuccess = await ttsService.playAudioFromAPI(data.message);
-        console.log('HYBRID-FAST: TTS result:', ttsSuccess);
+        const reader = response.body?.getReader();
+        if (!reader) {
+          console.error('STREAMING: No response body reader available');
+          return;
+        }
+
+        let fullResponse = '';
+        let isFirstChunk = true;
+
+        // Start TTS streaming immediately for first chunk
+        await ttsService.startStreamingTTS();
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = new TextDecoder().decode(value);
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') {
+                await ttsService.finishStreamingTTS();
+                this.dispatch?.(appendTranscript(`\nAI: ${fullResponse}`));
+                return;
+              }
+
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.type === 'chunk' && parsed.content) {
+                  fullResponse += parsed.content;
+                  
+                  // Stream to TTS immediately for real-time audio
+                  await ttsService.streamTextToTTS(parsed.content);
+                  
+                  // Update transcript progressively
+                  if (isFirstChunk) {
+                    this.dispatch?.(appendTranscript(`\nAI: ${parsed.content}`));
+                    isFirstChunk = false;
+                  } else {
+                    this.dispatch?.(appendTranscript(parsed.content));
+                  }
+                } else if (parsed.type === 'complete') {
+                  await ttsService.finishStreamingTTS();
+                  this.dispatch?.(appendTranscript(`\nAI: ${fullResponse}`));
+                  return;
+                }
+              } catch (e) {
+                // Skip malformed JSON
+              }
+            }
+          }
+        }
       } else {
-        console.error('HYBRID-FAST: AI API error:', response.status, response.statusText);
+        console.error('STREAMING: AI API error:', response.status, response.statusText);
         const errorText = await response.text();
-        console.error('HYBRID-FAST: API error response:', errorText);
+        console.error('STREAMING: API error response:', errorText);
       }
 
     } catch (error) {
-      console.error('HYBRID-FAST: Error in API call:', error);
+      console.error('STREAMING: Error in API call:', error);
     }
   }
 
