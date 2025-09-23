@@ -225,22 +225,22 @@ class STTService {
 
   private async processFinalResult(text: string) {
     try {
-      // Use ULTRA-FAST approach with existing working APIs
-      await this.processUltraFastAPI(text);
+      // Use HYBRID approach: Fast API + Optimized TTS for near-real-time response
+      await this.processHybridFastAPI(text);
     } catch (error) {
       console.error('Error processing final result:', error);
     }
   }
 
-  private async processUltraFastAPI(text: string) {
+  private async processHybridFastAPI(text: string) {
     try {
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://interview-c3gu77xyq-jamies-projects-c3ccf727.vercel.app';
-      console.log('ULTRA-FAST: Calling API:', `${apiUrl}/api/chat`);
+      console.log('HYBRID-FAST: Calling API:', `${apiUrl}/api/chat`);
       
       // Pre-initialize TTS service for immediate response
       const ttsService = TTSService.getInstance();
       
-      // Make AI request with ULTRA-FAST settings
+      // Make AI request with optimized settings for fastest response
       const response = await fetch(`${apiUrl}/api/chat`, {
         method: 'POST',
         headers: { 
@@ -257,23 +257,23 @@ class STTService {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('ULTRA-FAST: AI Response received:', data);
+        console.log('HYBRID-FAST: AI Response received:', data);
         
         // Update transcript with AI response
         this.dispatch?.(appendTranscript(`\nAI: ${data.message}`));
         
         // Start TTS IMMEDIATELY for fastest possible audio response
-        console.log('ULTRA-FAST: Starting TTS for:', data.message);
+        console.log('HYBRID-FAST: Starting TTS for:', data.message);
         const ttsSuccess = await ttsService.playAudioFromAPI(data.message);
-        console.log('ULTRA-FAST: TTS result:', ttsSuccess);
+        console.log('HYBRID-FAST: TTS result:', ttsSuccess);
       } else {
-        console.error('ULTRA-FAST: AI API error:', response.status, response.statusText);
+        console.error('HYBRID-FAST: AI API error:', response.status, response.statusText);
         const errorText = await response.text();
-        console.error('ULTRA-FAST: API error response:', errorText);
+        console.error('HYBRID-FAST: API error response:', errorText);
       }
 
     } catch (error) {
-      console.error('ULTRA-FAST: Error in API call:', error);
+      console.error('HYBRID-FAST: Error in API call:', error);
     }
   }
 
