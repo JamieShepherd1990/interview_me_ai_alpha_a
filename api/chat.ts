@@ -7,7 +7,9 @@ const openai = new OpenAI({
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages, role, interviewType, stream } = await request.json();
+    const body = await request.json();
+    console.log('Full request body:', JSON.stringify(body, null, 2));
+    const { messages, role, interviewType, stream } = body;
 
     // System prompt based on role and interview type
     const systemPrompt = `You are InterviewCoach AI. Your persona is a friendly, supportive, and professional hiring manager. Your audience is university students preparing for their first job.
