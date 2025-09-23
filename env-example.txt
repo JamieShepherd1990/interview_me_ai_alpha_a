@@ -4,6 +4,9 @@
 # API Base URL (for development, use your local server or ngrok URL)
 EXPO_PUBLIC_API_URL=https://interview-c3gu77xyq-jamies-projects-c3ccf727.vercel.app
 
+# Vercel Bypass Token (for accessing protected deployments)
+EXPO_PUBLIC_VERCEL_BYPASS_TOKEN=your-vercel-bypass-token-here
+
 # OpenAI API Configuration
 OPENAI_API_KEY=your_openai_api_key_here
 OPENAI_MODEL=gpt-4o-mini

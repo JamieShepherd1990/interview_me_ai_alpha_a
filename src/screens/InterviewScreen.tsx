@@ -85,6 +85,7 @@ export default function InterviewScreen() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-vercel-protection-bypass': process.env.EXPO_PUBLIC_VERCEL_BYPASS_TOKEN || '6ZOXLEs9hp1hPovTicTHrbJcW0yRENmt'
         },
         body: JSON.stringify({
           message: userInput,

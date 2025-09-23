@@ -230,7 +230,10 @@ class STTService {
       console.log('Calling API:', `${apiUrl}/api/chat`);
       const response = await fetch(`${apiUrl}/api/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-vercel-protection-bypass': process.env.EXPO_PUBLIC_VERCEL_BYPASS_TOKEN || '6ZOXLEs9hp1hPovTicTHrbJcW0yRENmt'
+        },
         body: JSON.stringify({
           messages: [
             { role: 'user', content: text }

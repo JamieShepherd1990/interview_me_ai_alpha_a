@@ -168,7 +168,10 @@ class TTSService {
       console.log('Calling TTS API:', `${apiUrl}/api/tts`);
       const response = await fetch(`${apiUrl}/api/tts`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-vercel-protection-bypass': process.env.EXPO_PUBLIC_VERCEL_BYPASS_TOKEN || '6ZOXLEs9hp1hPovTicTHrbJcW0yRENmt'
+        },
         body: JSON.stringify({ text }),
       });
 
@@ -216,7 +219,10 @@ class TTSService {
       console.log('Calling TTS API:', `${apiUrl}/api/tts`);
       const response = await fetch(`${apiUrl}/api/tts`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-vercel-protection-bypass': process.env.EXPO_PUBLIC_VERCEL_BYPASS_TOKEN || '6ZOXLEs9hp1hPovTicTHrbJcW0yRENmt'
+        },
         body: JSON.stringify({ text }),
       });
 
