@@ -248,9 +248,13 @@ class STTService {
         
         // Start TTS for AI response with low latency
         const ttsService = TTSService.getInstance();
-        await ttsService.playAudioFromAPI(data.content);
+        console.log('Starting TTS for:', data.content);
+        const ttsSuccess = await ttsService.playAudioFromAPI(data.content);
+        console.log('TTS result:', ttsSuccess);
       } else {
         console.error('AI API error:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('API error response:', errorText);
       }
 
     } catch (error) {

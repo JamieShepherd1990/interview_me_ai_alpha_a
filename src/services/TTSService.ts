@@ -174,14 +174,17 @@ class TTSService {
 
       if (!response.ok) {
         console.error('TTS API error:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('TTS API error response:', errorText);
         return false;
       }
 
       const data = await response.json();
-      console.log('TTS response received');
+      console.log('TTS response received:', data);
 
       // Convert base64 audio to data URL
       const audioUrl = `data:audio/mpeg;base64,${data.audio}`;
+      console.log('Playing audio from URL:', audioUrl.substring(0, 50) + '...');
       return await this.playAudio(audioUrl, []);
 
     } catch (error) {
