@@ -235,13 +235,13 @@ class STTService {
   private async processStreamingAPI(text: string) {
     try {
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://interview-c3gu77xyq-jamies-projects-c3ccf727.vercel.app';
-      console.log('STREAMING: Calling API:', `${apiUrl}/api/stream`);
+      console.log('HYBRID-STREAMING: Calling API:', `${apiUrl}/api/chat`);
       
       // Pre-initialize TTS service for immediate response
       const ttsService = TTSService.getInstance();
       
-      // Make AI request with STREAMING enabled
-      const response = await fetch(`${apiUrl}/api/stream`, {
+      // Make AI request to working chat API
+      const response = await fetch(`${apiUrl}/api/chat`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -256,70 +256,47 @@ class STTService {
       });
 
       if (response.ok) {
-        console.log('STREAMING: Response received, processing stream...');
+        const data = await response.json();
+        console.log('HYBRID-STREAMING: AI Response received:', data);
         
-        const reader = response.body?.getReader();
-        if (!reader) {
-          console.error('STREAMING: No response body reader available');
-          return;
-        }
-
-        let fullResponse = '';
-        let isFirstChunk = true;
-
-        // Start TTS streaming immediately for first chunk
+        // Simulate streaming by breaking response into chunks
+        const fullResponse = data.message || data.content || '';
+        console.log('HYBRID-STREAMING: Full response:', fullResponse);
+        
+        // Start TTS streaming immediately
         await ttsService.startStreamingTTS();
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = new TextDecoder().decode(value);
-          const lines = chunk.split('\n');
-
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6);
-              if (data === '[DONE]') {
-                await ttsService.finishStreamingTTS();
-                this.dispatch?.(appendTranscript(`\nAI: ${fullResponse}`));
-                return;
-              }
-
-              try {
-                const parsed = JSON.parse(data);
-                if (parsed.type === 'chunk' && parsed.content) {
-                  fullResponse += parsed.content;
-                  
-                  // Stream to TTS immediately for real-time audio
-                  await ttsService.streamTextToTTS(parsed.content);
-                  
-                  // Update transcript progressively
-                  if (isFirstChunk) {
-                    this.dispatch?.(appendTranscript(`\nAI: ${parsed.content}`));
-                    isFirstChunk = false;
-                  } else {
-                    this.dispatch?.(appendTranscript(parsed.content));
-                  }
-                } else if (parsed.type === 'complete') {
-                  await ttsService.finishStreamingTTS();
-                  this.dispatch?.(appendTranscript(`\nAI: ${fullResponse}`));
-                  return;
-                }
-              } catch (e) {
-                // Skip malformed JSON
-              }
-            }
-          }
+        
+        // Break response into words for simulated streaming
+        const words = fullResponse.split(' ');
+        let currentText = '';
+        
+        // Update transcript progressively
+        this.dispatch?.(appendTranscript(`\nAI: `));
+        
+        for (let i = 0; i < words.length; i++) {
+          const word = words[i];
+          currentText += (i > 0 ? ' ' : '') + word;
+          
+          // Stream to TTS in chunks
+          await ttsService.streamTextToTTS(word + (i < words.length - 1 ? ' ' : ''));
+          
+          // Update transcript progressively
+          this.dispatch?.(appendTranscript(word + (i < words.length - 1 ? ' ' : '')));
+          
+          // Small delay to simulate streaming
+          await new Promise(resolve => setTimeout(resolve, 50));
         }
+        
+        await ttsService.finishStreamingTTS();
+        console.log('HYBRID-STREAMING: Completed streaming response');
       } else {
-        console.error('STREAMING: AI API error:', response.status, response.statusText);
+        console.error('HYBRID-STREAMING: AI API error:', response.status, response.statusText);
         const errorText = await response.text();
-        console.error('STREAMING: API error response:', errorText);
+        console.error('HYBRID-STREAMING: API error response:', errorText);
       }
 
     } catch (error) {
-      console.error('STREAMING: Error in API call:', error);
+      console.error('HYBRID-STREAMING: Error in API call:', error);
     }
   }
 

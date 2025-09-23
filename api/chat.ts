@@ -79,7 +79,7 @@ Your instructions are:
     });
 
     return NextResponse.json({
-      content: response.choices[0].message.content,
+      message: response.choices[0].message.content,
       usage: response.usage
     });
 
