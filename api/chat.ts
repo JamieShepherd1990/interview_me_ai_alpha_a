@@ -20,6 +20,7 @@ Your instructions are:
 5. Never break character or reveal that you are an AI.`;
 
     // Check if streaming is requested - FORCE DEPLOYMENT
+    console.log('Stream parameter received:', stream, 'Type:', typeof stream);
     if (stream) {
       const streamResponse = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
