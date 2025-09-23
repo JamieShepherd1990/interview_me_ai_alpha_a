@@ -77,11 +77,12 @@ export default function HomeScreen() {
   const handleStartInterview = async (template: typeof interviewTemplates[0]) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
+    // Navigate directly to Interview screen with the selected role
     navigation.navigate('InterviewFlow' as any, {
-      screen: 'RoleSelection',
+      screen: 'Interview',
       params: { 
-        selectedRole: template.title,
-        interviewType: template.id 
+        interviewType: template.id,
+        role: template.title
       }
     } as any);
   };

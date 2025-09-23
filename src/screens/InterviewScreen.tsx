@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, TextInput, ScrollView } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
 import { Audio } from 'expo-av';
 import * as Speech from 'expo-speech';
@@ -12,8 +12,13 @@ import TTSService from '../services/TTSService';
 
 export default function InterviewScreen() {
   const navigation = useNavigation();
+  const route = useRoute();
   const dispatch = useDispatch();
   const session = useSelector((state: RootState) => state.session);
+  
+  // Get role from route parameters
+  const selectedRole = (route.params as any)?.role || 'Software Engineer';
+  const interviewType = (route.params as any)?.interviewType || '1';
   
   const [timer, setTimer] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
@@ -40,6 +45,7 @@ export default function InterviewScreen() {
     const ttsService = TTSService.getInstance();
     
     sttService.setDispatch(dispatch);
+    sttService.setSelectedRole(selectedRole);
     
     // Set up viseme callback for avatar
     ttsService.setVisemeCallback((visemes) => {
@@ -284,6 +290,7 @@ export default function InterviewScreen() {
           visemeStream={session.visemeStream || []}
         />
         <Text style={styles.avatarLabel}>AI Interview Coach</Text>
+        <Text style={styles.roleLabel}>Role: {selectedRole}</Text>
       </View>
 
       <View style={styles.statusCard}>
@@ -430,6 +437,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     fontWeight: '500',
+  },
+  roleLabel: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '600',
+    marginTop: 4,
   },
   transcriptContainer: {
     flex: 1,

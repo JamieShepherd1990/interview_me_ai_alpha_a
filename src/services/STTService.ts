@@ -26,6 +26,7 @@ class STTService {
   private silenceTimer: NodeJS.Timeout | null = null;
   private lastPartialResult = '';
   private bargeInCallback: (() => void) | null = null;
+  private selectedRole: string = 'Software Engineer';
   
   private config: STTConfig = {
     partialResultsEnabled: true,
@@ -57,6 +58,11 @@ class STTService {
 
   public setDispatch(dispatch: AppDispatch) {
     this.dispatch = dispatch;
+  }
+
+  public setSelectedRole(role: string) {
+    this.selectedRole = role;
+    console.log('STT Service: Role set to', role);
   }
 
   public setBargeInCallback(callback: () => void) {
@@ -251,7 +257,7 @@ class STTService {
           messages: [
             { role: 'user', content: text }
           ],
-          role: 'Software Engineer',
+          role: this.selectedRole,
         }),
       });
 
