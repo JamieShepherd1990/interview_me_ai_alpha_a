@@ -1,13 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextApiRequest, NextApiResponse } from 'next';
 import OpenAI from 'openai';
 
 const openai = new OpenAI({
   apiKey: process.env.openai_api_key,
 });
 
-export async function POST(request: NextRequest) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
   try {
-    const { transcript, role } = await request.json();
+    const { transcript, role } = req.body;
 
     const systemPrompt = `Analyze this interview transcript and provide feedback. Respond ONLY with a valid JSON object matching this exact schema:
 
@@ -53,20 +56,14 @@ Do not include any explanatory text or markdown formatting.`;
         throw new Error('Invalid learnings array');
       }
 
-      return NextResponse.json(feedback);
+      return res.status(200).json(feedback);
     } catch (parseError) {
       console.error('JSON parsing error:', parseError);
-      return NextResponse.json(
-        { error: 'Invalid response format from AI' },
-        { status: 500 }
-      );
+      return res.status(500).json({ error: 'Invalid response format from AI' });
     }
 
   } catch (error) {
     console.error('OpenAI API error:', error);
-    return NextResponse.json(
-      { error: 'Failed to generate feedback' },
-      { status: 500 }
-    );
+    return res.status(500).json({ error: 'Failed to generate feedback' });
   }
 }
