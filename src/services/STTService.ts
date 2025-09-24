@@ -242,6 +242,9 @@ class STTService {
     try {
       console.log('🚀 Processing streaming API with transcript:', text);
       
+      // Stop listening while AI responds
+      await this.stopListening();
+      
       // Pre-initialize TTS service for immediate response
       const ttsService = TTSService.getInstance();
       
@@ -251,26 +254,31 @@ class STTService {
       
       console.log('🤖 Generated AI Response:', aiResponse);
       
-      // Start TTS streaming immediately
-      console.log('CLIENT-STREAMING: Starting TTS streaming...');
-      await ttsService.startStreamingTTS();
-      
       // Update transcript with full response
       this.dispatch?.(appendTranscript(`\nAI: ${aiResponse}`));
       
-      // Generate visemes for the entire response
+      // Start TTS streaming with proper avatar animation
+      console.log('CLIENT-STREAMING: Starting TTS streaming...');
+      await ttsService.startStreamingTTS();
+      
+      // Generate visemes for the entire response and trigger avatar animation
       if (ttsService.visemeCallback) {
         const visemes = ttsService.generateVisemes(aiResponse);
         console.log('Generated visemes for full response:', visemes);
         ttsService.visemeCallback(visemes);
       }
       
-      // Use the working TTS API for the entire response (single API call)
+      // Use ElevenLabs TTS for human-like voice
       console.log('CLIENT-STREAMING: Playing full response audio...');
       await ttsService.playAudioFromAPI(aiResponse);
       
       await ttsService.finishStreamingTTS();
       console.log('CLIENT-STREAMING: Completed streaming response');
+      
+      // Resume listening after AI finishes speaking
+      setTimeout(() => {
+        this.startListening();
+      }, 1000); // Wait 1 second before resuming listening
 
     } catch (error) {
       console.error('CLIENT-STREAMING: Error in processing:', error);

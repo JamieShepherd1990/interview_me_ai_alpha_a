@@ -33,28 +33,33 @@ export default function Avatar({ state, visemeStream = [] }: AvatarProps) {
   // Handle viseme events for lip-sync
   useEffect(() => {
     if (visemeStream.length > 0 && animationRef.current) {
-      const latestViseme = visemeStream[visemeStream.length - 1];
-      // Map viseme to specific animation frame for lip-sync
-      const frame = mapVisemeToFrame(latestViseme.phoneme);
-      animationRef.current.play(frame, frame + 5);
+      // Process all viseme events for smooth lip-sync
+      visemeStream.forEach((viseme, index) => {
+        setTimeout(() => {
+          if (animationRef.current) {
+            const frame = mapVisemeToFrame(viseme.phoneme);
+            animationRef.current.play(frame, frame + 3);
+          }
+        }, viseme.timestamp - Date.now());
+      });
     }
   }, [visemeStream]);
 
   const mapVisemeToFrame = (phoneme: string): number => {
     // Map phonemes to animation frames for lip-sync
     const phonemeMap: { [key: string]: number } = {
-      'sil': 0,
-      'ah': 10,
-      'eh': 15,
-      'oh': 20,
-      'oo': 25,
-      'ee': 30,
-      'mm': 35,
-      'ff': 40,
-      'ss': 45,
-      'th': 50,
+      'sil': 0,    // Silence - closed mouth
+      'ah': 10,    // Open mouth - 'ah' sound
+      'eh': 15,    // Slightly open - 'eh' sound
+      'oh': 20,    // Round mouth - 'oh' sound
+      'oo': 25,    // Very round - 'oo' sound
+      'ee': 30,    // Smile - 'ee' sound
+      'mm': 35,    // Closed lips - 'mm' sound
+      'ff': 40,    // Lower lip to teeth - 'ff' sound
+      'ss': 45,    // Narrow opening - 'ss' sound
+      'th': 50,    // Tongue between teeth - 'th' sound
     };
-    return phonemeMap[phoneme] || 0;
+    return phonemeMap[phoneme] || 10; // Default to 'ah' if not found
   };
 
   const getAnimationSource = () => {

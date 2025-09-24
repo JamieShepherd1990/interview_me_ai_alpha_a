@@ -189,14 +189,51 @@ class TTSService {
           throw new Error('API failed');
         }
       } catch (apiError) {
-        console.log('TTS API error, using fallback TTS:', apiError);
-        // Fallback to local TTS
-        return await this.playAudioFromFallback(text);
+        console.log('TTS API error, retrying with different approach:', apiError);
+        // Try direct ElevenLabs API call
+        return await this.callElevenLabsDirectly(text);
       }
 
     } catch (error) {
       console.error('Error in playAudioFromAPI:', error);
       return false;
+    }
+  }
+
+  private async callElevenLabsDirectly(text: string): Promise<boolean> {
+    try {
+      console.log('Calling ElevenLabs directly for text:', text);
+      
+      const response = await fetch('https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM', {
+        method: 'POST',
+        headers: {
+          'Accept': 'audio/mpeg',
+          'Content-Type': 'application/json',
+          'xi-api-key': process.env.EXPO_PUBLIC_ELEVENLABS_API_KEY || 'your_elevenlabs_key_here',
+        },
+        body: JSON.stringify({
+          text,
+          model_id: 'eleven_monolingual_v1',
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.5
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`ElevenLabs API error: ${response.status}`);
+      }
+
+      const audioBuffer = await response.arrayBuffer();
+      const base64Audio = Buffer.from(audioBuffer).toString('base64');
+      const audioUrl = `data:audio/mpeg;base64,${base64Audio}`;
+      
+      return await this.playAudioFromUrl(audioUrl);
+    } catch (error) {
+      console.error('Direct ElevenLabs call failed:', error);
+      // Final fallback to local TTS
+      return await this.playAudioFromFallback(text);
     }
   }
 
@@ -284,30 +321,61 @@ class TTSService {
   }
 
   public generateVisemes(text: string): VisemeEvent[] {
-    // Generate basic viseme events for lip-sync
+    // Generate realistic viseme events for lip-sync
     const visemes: VisemeEvent[] = [];
     const words = text.split(' ');
+    let currentTime = Date.now();
     
     words.forEach((word, index) => {
-      visemes.push({
-        phoneme: this.getVisemeForWord(word),
-        timestamp: Date.now() + (index * 200), // 200ms per word
-        duration: 200 // 200ms duration per word
+      // Generate multiple visemes per word for more realistic lip-sync
+      const wordVisemes = this.getVisemesForWord(word);
+      
+      wordVisemes.forEach((viseme, visemeIndex) => {
+        visemes.push({
+          phoneme: viseme,
+          timestamp: currentTime + (visemeIndex * 100), // 100ms per viseme
+          duration: 100 // 100ms duration per viseme
+        });
       });
+      
+      currentTime += word.length * 50; // Time based on word length
     });
     
     return visemes;
   }
 
-  private getVisemeForWord(word: string): string {
-    // Simple viseme mapping based on word content
+  private getVisemesForWord(word: string): string[] {
+    // Generate realistic viseme sequence for each word
     const lowerWord = word.toLowerCase();
-    if (lowerWord.includes('a') || lowerWord.includes('e')) return 'A';
-    if (lowerWord.includes('i') || lowerWord.includes('y')) return 'I';
-    if (lowerWord.includes('o') || lowerWord.includes('u')) return 'O';
-    if (lowerWord.includes('m') || lowerWord.includes('p') || lowerWord.includes('b')) return 'M';
-    if (lowerWord.includes('f') || lowerWord.includes('v')) return 'F';
-    return 'A'; // Default viseme
+    const visemes: string[] = [];
+    
+    // Start with mouth opening
+    visemes.push('ah');
+    
+    // Generate visemes based on vowels and consonants
+    for (let i = 0; i < lowerWord.length; i++) {
+      const char = lowerWord[i];
+      if ('aeiou'.includes(char)) {
+        visemes.push('ah');
+      } else if ('bcdfg'.includes(char)) {
+        visemes.push('mm');
+      } else if ('hjkl'.includes(char)) {
+        visemes.push('ah');
+      } else if ('mnp'.includes(char)) {
+        visemes.push('mm');
+      } else if ('qrst'.includes(char)) {
+        visemes.push('ss');
+      } else if ('vwxyz'.includes(char)) {
+        visemes.push('ff');
+      } else {
+        visemes.push('ah');
+      }
+    }
+    
+    // End with mouth closing
+    visemes.push('mm');
+    
+    return visemes;
   }
 
   public async finishStreamingTTS(): Promise<void> {
