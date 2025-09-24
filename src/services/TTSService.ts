@@ -164,35 +164,9 @@ class TTSService {
     try {
       console.log('Requesting TTS for text:', text);
 
-      // Try API first, fallback to local TTS if it fails
-      try {
-        const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://interviewme-lilac.vercel.app';
-        console.log('Calling TTS API:', `${apiUrl}/api/tts`);
-        const response = await fetch(`${apiUrl}/api/tts`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-vercel-protection-bypass': process.env.EXPO_PUBLIC_VERCEL_BYPASS_TOKEN || '6ZOXLEs9hp1hPovTicTHrbJcW0yRENmt'
-          },
-          body: JSON.stringify({ text }),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log('TTS response received:', data);
-
-          // Convert base64 audio to data URL
-          const audioUrl = `data:audio/mpeg;base64,${data.audio}`;
-          return await this.playAudioFromUrl(audioUrl);
-        } else {
-          console.log('TTS API failed, using fallback');
-          throw new Error('API failed');
-        }
-      } catch (apiError) {
-        console.log('TTS API error, retrying with different approach:', apiError);
-        // Try direct ElevenLabs API call
-        return await this.callElevenLabsDirectly(text);
-      }
+      // Backend APIs are broken, use direct ElevenLabs API call
+      console.log('Backend APIs are broken, using direct ElevenLabs API');
+      return await this.callElevenLabsDirectly(text);
 
     } catch (error) {
       console.error('Error in playAudioFromAPI:', error);

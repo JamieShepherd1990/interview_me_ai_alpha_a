@@ -80,69 +80,11 @@ export default function InterviewScreen() {
 
   // Voice handlers are now handled by STTService
 
-  const generateAIResponse = async (userInput: string) => {
-    try {
-      dispatch(setSpeaking(true));
-      
-      // Call backend API for real AI response
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://interviewme-lilac.vercel.app';
-      console.log('Calling API:', `${apiUrl}/api/chat`);
-      const response = await fetch(`${apiUrl}/api/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-vercel-protection-bypass': process.env.EXPO_PUBLIC_VERCEL_BYPASS_TOKEN || '6ZOXLEs9hp1hPovTicTHrbJcW0yRENmt'
-        },
-        body: JSON.stringify({
-          message: userInput,
-          transcript: session.transcript,
-          role: 'Software Engineer', // Get from route params
-        }),
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        const aiResponse = data.response;
-        
-        // Add AI response to conversation
-        setConversationHistory(prev => [...prev, {
-          type: 'ai',
-          text: aiResponse,
-          timestamp: Date.now()
-        }]);
-        
-        // Speak the AI response
-        await speakText(aiResponse);
-      }
-    } catch (error) {
-      console.error('Error generating AI response:', error);
-      dispatch(setSpeaking(false));
-    }
-  };
+  // generateAIResponse is now handled by STTService locally
+  // This function is kept for compatibility but not used
 
-  const speakText = async (text: string) => {
-    try {
-      await Speech.speak(text, {
-        language: 'en-US',
-        pitch: 1.0,
-        rate: 0.85,
-        onDone: () => {
-          dispatch(setSpeaking(false));
-          // Automatically start listening for next response
-          setTimeout(() => {
-            startVoiceRecognition();
-          }, 1000);
-        },
-        onError: (error: Error) => {
-          console.error('Speech error:', error);
-          dispatch(setSpeaking(false));
-        },
-      });
-    } catch (error) {
-      console.error('Error speaking text:', error);
-      dispatch(setSpeaking(false));
-    }
-  };
+  // speakText is now handled by TTSService with proper ElevenLabs integration
+  // This function is kept for compatibility but not used
 
   const startVoiceRecognition = async () => {
     try {
